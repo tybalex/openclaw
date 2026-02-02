@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
+import type { OidcVerifier } from "./oidc.js";
 import { buildHistoryContextFromEntries, type HistoryEntry } from "../auto-reply/reply/history.js";
 import { createDefaultDeps } from "../cli/deps.js";
 import { agentCommand } from "../commands/agent.js";
@@ -20,6 +21,7 @@ type OpenAiHttpOptions = {
   auth: ResolvedGatewayAuth;
   maxBodyBytes?: number;
   trustedProxies?: string[];
+  oidcVerifier?: OidcVerifier;
 };
 
 type OpenAiChatMessage = {
@@ -186,9 +188,10 @@ export async function handleOpenAiHttpRequest(
   const token = getBearerToken(req);
   const authResult = await authorizeGatewayConnect({
     auth: opts.auth,
-    connectAuth: { token, password: token },
+    connectAuth: { token, password: token, oidcToken: token },
     req,
     trustedProxies: opts.trustedProxies,
+    oidcVerifier: opts.oidcVerifier,
   });
   if (!authResult.ok) {
     sendUnauthorized(res);

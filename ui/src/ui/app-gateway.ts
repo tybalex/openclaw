@@ -1,4 +1,5 @@
 import type { OpenClawApp } from "./app";
+import { getValidOidcToken } from "./oidc";
 import type { EventLogEntry } from "./app-events";
 import type { ExecApprovalRequest } from "./controllers/exec-approval";
 import type { GatewayEventFrame, GatewayHelloOk } from "./gateway";
@@ -122,6 +123,7 @@ export function connectGateway(host: GatewayHost) {
     url: host.settings.gatewayUrl,
     token: host.settings.token.trim() ? host.settings.token : undefined,
     password: host.password.trim() ? host.password : undefined,
+    oidcToken: getValidOidcToken() ?? undefined,
     clientName: "openclaw-control-ui",
     mode: "webchat",
     onHello: (hello) => {
@@ -147,6 +149,7 @@ export function connectGateway(host: GatewayHost) {
       if (code !== 1012) {
         host.lastError = `disconnected (${code}): ${reason || "no reason"}`;
       }
+      // OIDC is used for identity display only; no auto-redirect on disconnect.
     },
     onEvent: (evt) => handleGatewayEvent(host, evt),
     onGap: ({ expected, received }) => {

@@ -11,6 +11,7 @@ import { randomUUID } from "node:crypto";
 import type { ClientToolDefinition } from "../agents/pi-embedded-runner/run/params.js";
 import type { ImageContent } from "../commands/agent/types.js";
 import type { GatewayHttpResponsesConfig } from "../config/types.gateway.js";
+import type { OidcVerifier } from "./oidc.js";
 import { buildHistoryContextFromEntries, type HistoryEntry } from "../auto-reply/reply/history.js";
 import { createDefaultDeps } from "../cli/deps.js";
 import { agentCommand } from "../commands/agent.js";
@@ -60,6 +61,7 @@ type OpenResponsesHttpOptions = {
   maxBodyBytes?: number;
   config?: GatewayHttpResponsesConfig;
   trustedProxies?: string[];
+  oidcVerifier?: OidcVerifier;
 };
 
 const DEFAULT_BODY_BYTES = 20 * 1024 * 1024;
@@ -345,9 +347,10 @@ export async function handleOpenResponsesHttpRequest(
   const token = getBearerToken(req);
   const authResult = await authorizeGatewayConnect({
     auth: opts.auth,
-    connectAuth: { token, password: token },
+    connectAuth: { token, password: token, oidcToken: token },
     req,
     trustedProxies: opts.trustedProxies,
+    oidcVerifier: opts.oidcVerifier,
   });
   if (!authResult.ok) {
     sendUnauthorized(res);

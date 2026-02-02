@@ -1,20 +1,24 @@
 import type { IncomingMessage } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import type { GatewayAuthConfig, GatewayTailscaleMode } from "../config/config.js";
+import type { GatewayOidcConfig } from "../config/types.gateway.js";
+import type { OidcVerifier } from "./oidc.js";
 import { readTailscaleWhoisIdentity, type TailscaleWhoisIdentity } from "../infra/tailscale.js";
 import { isTrustedProxyAddress, parseForwardedForClientIp, resolveGatewayClientIp } from "./net.js";
-export type ResolvedGatewayAuthMode = "token" | "password";
+
+export type ResolvedGatewayAuthMode = "token" | "password" | "oidc";
 
 export type ResolvedGatewayAuth = {
   mode: ResolvedGatewayAuthMode;
   token?: string;
   password?: string;
   allowTailscale: boolean;
+  oidcConfig?: GatewayOidcConfig;
 };
 
 export type GatewayAuthResult = {
   ok: boolean;
-  method?: "token" | "password" | "tailscale" | "device-token";
+  method?: "token" | "password" | "tailscale" | "device-token" | "oidc";
   user?: string;
   reason?: string;
 };
@@ -22,6 +26,7 @@ export type GatewayAuthResult = {
 type ConnectAuth = {
   token?: string;
   password?: string;
+  oidcToken?: string;
 };
 
 type TailscaleUser = {
@@ -210,7 +215,9 @@ export function resolveGatewayAuth(params: {
     env.OPENCLAW_GATEWAY_PASSWORD ??
     env.CLAWDBOT_GATEWAY_PASSWORD ??
     undefined;
-  const mode: ResolvedGatewayAuth["mode"] = authConfig.mode ?? (password ? "password" : "token");
+  const oidcConfig = authConfig.oidc ?? undefined;
+  const mode: ResolvedGatewayAuth["mode"] =
+    authConfig.mode ?? (oidcConfig ? "oidc" : password ? "password" : "token");
   const allowTailscale =
     authConfig.allowTailscale ?? (params.tailscaleMode === "serve" && mode !== "password");
   return {
@@ -218,6 +225,7 @@ export function resolveGatewayAuth(params: {
     token,
     password,
     allowTailscale,
+    oidcConfig,
   };
 }
 
@@ -233,6 +241,11 @@ export function assertGatewayAuthConfigured(auth: ResolvedGatewayAuth): void {
   if (auth.mode === "password" && !auth.password) {
     throw new Error("gateway auth mode is password, but no password was configured");
   }
+  if (auth.mode === "oidc" && !auth.oidcConfig) {
+    throw new Error(
+      "gateway auth mode is oidc, but no OIDC configuration was provided (set gateway.auth.oidc with issuer and audience)",
+    );
+  }
 }
 
 export async function authorizeGatewayConnect(params: {
@@ -241,6 +254,7 @@ export async function authorizeGatewayConnect(params: {
   req?: IncomingMessage;
   trustedProxies?: string[];
   tailscaleWhois?: TailscaleWhoisLookup;
+  oidcVerifier?: OidcVerifier;
 }): Promise<GatewayAuthResult> {
   const { auth, connectAuth, req, trustedProxies } = params;
   const tailscaleWhois = params.tailscaleWhois ?? readTailscaleWhoisIdentity;
@@ -258,6 +272,26 @@ export async function authorizeGatewayConnect(params: {
         user: tailscaleCheck.user.login,
       };
     }
+  }
+
+  // OIDC: verify JWT if verifier is available and client sent an OIDC token.
+  // In OIDC mode, verification is best-effort — used for identity display only.
+  // Connections are allowed regardless of verification outcome.
+  if (params.oidcVerifier && connectAuth?.oidcToken) {
+    const result = await params.oidcVerifier.verify(connectAuth.oidcToken);
+    if (result.ok) {
+      return { ok: true, method: "oidc", user: result.user };
+    }
+    // Verification failed — log but allow connection in OIDC mode.
+    if (auth.mode === "oidc") {
+      return { ok: true, method: "oidc", reason: result.reason };
+    }
+    // In other modes, fall through to token/password.
+  }
+
+  // In OIDC mode without a token, allow connection (identity not available).
+  if (auth.mode === "oidc" && !connectAuth?.oidcToken) {
+    return { ok: true, method: "oidc", reason: "oidc_token_missing" };
   }
 
   if (auth.mode === "token") {

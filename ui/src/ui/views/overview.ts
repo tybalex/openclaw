@@ -15,11 +15,15 @@ export type OverviewProps = {
   cronEnabled: boolean | null;
   cronNext: number | null;
   lastChannelsRefresh: number | null;
+  oidcLoggedIn: boolean;
+  oidcUser: string | null;
   onSettingsChange: (next: UiSettings) => void;
   onPasswordChange: (next: string) => void;
   onSessionKeyChange: (next: string) => void;
   onConnect: () => void;
   onRefresh: () => void;
+  onOidcLogin: () => void;
+  onOidcLogout: () => void;
 };
 
 export function renderOverview(props: OverviewProps) {
@@ -160,6 +164,15 @@ export function renderOverview(props: OverviewProps) {
               placeholder="system or shared password"
             />
           </label>
+          <div class="field">
+            <span>NVIDIA SSO</span>
+            ${props.oidcLoggedIn
+              ? html`<div class="row" style="gap: 8px; align-items: center;">
+                  <span class="badge ok">Signed in${props.oidcUser ? ` (${props.oidcUser})` : ""}</span>
+                  <button class="btn btn-sm" @click=${() => props.onOidcLogout()}>Sign out</button>
+                </div>`
+              : html`<button class="btn primary" @click=${() => props.onOidcLogin()}>Sign in with NVIDIA</button>`}
+          </div>
           <label class="field">
             <span>Default Session Key</span>
             <input

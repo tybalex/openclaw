@@ -256,6 +256,7 @@ export async function startGatewayServer(
     resolvedAuth,
     tailscaleConfig,
     tailscaleMode,
+    oidcVerifier,
   } = runtimeConfig;
   let hooksConfig = runtimeConfig.hooksConfig;
   const canvasHostEnabled = runtimeConfig.canvasHostEnabled;
@@ -295,6 +296,7 @@ export async function startGatewayServer(
     openResponsesEnabled,
     openResponsesConfig,
     resolvedAuth,
+    oidcVerifier,
     gatewayTls,
     hooksConfig: () => hooksConfig,
     pluginRegistry,
@@ -431,6 +433,7 @@ export async function startGatewayServer(
     canvasHostEnabled: Boolean(canvasHost),
     canvasHostServerPort,
     resolvedAuth,
+    oidcVerifier,
     gatewayMethods,
     events: GATEWAY_EVENTS,
     logGateway: log,

@@ -72,7 +72,22 @@ export type GatewayControlUiConfig = {
   dangerouslyDisableDeviceAuth?: boolean;
 };
 
-export type GatewayAuthMode = "token" | "password";
+export type GatewayAuthMode = "token" | "password" | "oidc";
+
+export type GatewayOidcConfig = {
+  /** OIDC issuer URL (e.g. https://stg.login.nvidia.com, https://login.microsoftonline.com/{tenant}/v2.0). */
+  issuer: string;
+  /** Expected audience (aud) claim. Typically the OIDC client ID. */
+  audience: string;
+  /** Custom JWKS URI override (default: auto-discovered from issuer). */
+  jwksUri?: string;
+  /** JWT claim to use as the gateway user identity (default: "sub"). */
+  userClaim?: string;
+  /** Restrict access to specific email domains (e.g. ["nvidia.com"]). */
+  allowedDomains?: string[];
+  /** Restrict access to specific email addresses. */
+  allowedEmails?: string[];
+};
 
 export type GatewayAuthConfig = {
   /** Authentication mode for Gateway connections. Defaults to token when set. */
@@ -83,6 +98,8 @@ export type GatewayAuthConfig = {
   password?: string;
   /** Allow Tailscale identity headers when serve mode is enabled. */
   allowTailscale?: boolean;
+  /** OIDC configuration for SSO authentication. */
+  oidc?: GatewayOidcConfig;
 };
 
 export type GatewayTailscaleMode = "off" | "serve" | "funnel";

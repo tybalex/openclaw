@@ -72,7 +72,7 @@ function resolveHostName(hostHeader?: string): string {
   return name ?? "";
 }
 
-type AuthProvidedKind = "token" | "password" | "none";
+type AuthProvidedKind = "token" | "password" | "oidc" | "none";
 
 function formatGatewayAuthFailureMessage(params: {
   authMode: ResolvedGatewayAuth["mode"];
@@ -116,6 +116,20 @@ function formatGatewayAuthFailureMessage(params: {
       return "unauthorized: tailscale identity check failed (use Tailscale Serve auth or gateway token/password)";
     case "tailscale_user_mismatch":
       return "unauthorized: tailscale identity mismatch (use Tailscale Serve auth or gateway token/password)";
+    case "oidc_token_missing":
+      return "unauthorized: OIDC token missing (provide oidcToken in connect auth or Bearer header)";
+    case "oidc_token_expired":
+      return "unauthorized: OIDC token expired (re-authenticate with your SSO provider)";
+    case "oidc_signature_invalid":
+      return "unauthorized: OIDC token signature invalid (token may be corrupted or from wrong issuer)";
+    case "oidc_token_invalid":
+      return "unauthorized: OIDC token invalid (check issuer and audience configuration)";
+    case "oidc_user_claim_missing":
+      return "unauthorized: OIDC token missing required user claim (check gateway.auth.oidc.userClaim)";
+    case "oidc_domain_not_allowed":
+      return "unauthorized: OIDC user domain not in allowlist (check gateway.auth.oidc.allowedDomains)";
+    case "oidc_email_not_allowed":
+      return "unauthorized: OIDC user email not in allowlist (check gateway.auth.oidc.allowedEmails)";
     default:
       break;
   }
@@ -125,6 +139,9 @@ function formatGatewayAuthFailureMessage(params: {
   }
   if (authMode === "password" && authProvided === "none") {
     return `unauthorized: gateway password missing (${passwordHint})`;
+  }
+  if (authMode === "oidc" && authProvided === "none") {
+    return "unauthorized: OIDC token missing (authenticate via SSO and provide oidcToken)";
   }
   return "unauthorized";
 }
@@ -142,6 +159,7 @@ export function attachGatewayWsMessageHandler(params: {
   canvasHostUrl?: string;
   connectNonce: string;
   resolvedAuth: ResolvedGatewayAuth;
+  oidcVerifier?: import("../../oidc.js").OidcVerifier;
   gatewayMethods: string[];
   events: string[];
   extraHandlers: GatewayRequestHandlers;
@@ -172,6 +190,7 @@ export function attachGatewayWsMessageHandler(params: {
     canvasHostUrl,
     connectNonce,
     resolvedAuth,
+    oidcVerifier,
     gatewayMethods,
     events,
     extraHandlers,
@@ -572,6 +591,7 @@ export function attachGatewayWsMessageHandler(params: {
           connectAuth: connectParams.auth,
           req: upgradeReq,
           trustedProxies,
+          oidcVerifier,
         });
         let authOk = authResult.ok;
         let authMethod =
@@ -593,11 +613,13 @@ export function attachGatewayWsMessageHandler(params: {
           logWsControl.warn(
             `unauthorized conn=${connId} remote=${remoteAddr ?? "?"} client=${clientLabel} ${connectParams.client.mode} v${connectParams.client.version} reason=${authResult.reason ?? "unknown"}`,
           );
-          const authProvided: AuthProvidedKind = connectParams.auth?.token
-            ? "token"
-            : connectParams.auth?.password
-              ? "password"
-              : "none";
+          const authProvided: AuthProvidedKind = connectParams.auth?.oidcToken
+            ? "oidc"
+            : connectParams.auth?.token
+              ? "token"
+              : connectParams.auth?.password
+                ? "password"
+                : "none";
           const authMessage = formatGatewayAuthFailureMessage({
             authMode: resolvedAuth.mode,
             authProvided,

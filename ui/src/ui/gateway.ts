@@ -48,6 +48,7 @@ export type GatewayBrowserClientOptions = {
   url: string;
   token?: string;
   password?: string;
+  oidcToken?: string;
   clientName?: GatewayClientName;
   clientVersion?: string;
   platform?: string;
@@ -156,10 +157,11 @@ export class GatewayBrowserClient {
       canFallbackToShared = Boolean(storedToken && this.opts.token);
     }
     const auth =
-      authToken || this.opts.password
+      authToken || this.opts.password || this.opts.oidcToken
         ? {
             token: authToken,
             password: this.opts.password,
+            oidcToken: this.opts.oidcToken,
           }
         : undefined;
 

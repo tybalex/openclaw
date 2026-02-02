@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
+import type { OidcVerifier } from "./oidc.js";
 import { authorizeGatewayConnect } from "./auth.js";
+
+function createMockOidcVerifier(opts?: {
+  user?: string;
+  ok?: boolean;
+  reason?: string;
+}): OidcVerifier {
+  return {
+    verify: async () => {
+      if (opts?.ok === false) {
+        return { ok: false, reason: opts.reason ?? "oidc_token_invalid" };
+      }
+      return {
+        ok: true,
+        user: opts?.user ?? "oidc-user",
+        claims: { sub: opts?.user ?? "oidc-user" },
+      };
+    },
+  };
+}
 
 describe("gateway auth", () => {
   it("does not throw when req is missing socket", async () => {
@@ -97,5 +117,76 @@ describe("gateway auth", () => {
     expect(res.ok).toBe(true);
     expect(res.method).toBe("tailscale");
     expect(res.user).toBe("peter");
+  });
+
+  it("accepts valid OIDC token in oidc mode", async () => {
+    const verifier = createMockOidcVerifier({ user: "sso-user@corp.com" });
+    const res = await authorizeGatewayConnect({
+      auth: {
+        mode: "oidc",
+        allowTailscale: false,
+        oidcConfig: { issuer: "https://idp.example.com", audience: "test" },
+      },
+      connectAuth: { oidcToken: "valid-jwt" },
+      oidcVerifier: verifier,
+    });
+    expect(res.ok).toBe(true);
+    expect(res.method).toBe("oidc");
+    expect(res.user).toBe("sso-user@corp.com");
+  });
+
+  it("rejects invalid OIDC token in oidc mode", async () => {
+    const verifier = createMockOidcVerifier({ ok: false, reason: "oidc_token_expired" });
+    const res = await authorizeGatewayConnect({
+      auth: {
+        mode: "oidc",
+        allowTailscale: false,
+        oidcConfig: { issuer: "https://idp.example.com", audience: "test" },
+      },
+      connectAuth: { oidcToken: "expired-jwt" },
+      oidcVerifier: verifier,
+    });
+    expect(res.ok).toBe(false);
+    expect(res.reason).toBe("oidc_token_expired");
+  });
+
+  it("rejects missing OIDC token in oidc mode", async () => {
+    const verifier = createMockOidcVerifier();
+    const res = await authorizeGatewayConnect({
+      auth: {
+        mode: "oidc",
+        allowTailscale: false,
+        oidcConfig: { issuer: "https://idp.example.com", audience: "test" },
+      },
+      connectAuth: null,
+      oidcVerifier: verifier,
+    });
+    expect(res.ok).toBe(false);
+    expect(res.reason).toBe("oidc_token_missing");
+  });
+
+  it("falls through to token auth when OIDC fails in token mode", async () => {
+    const verifier = createMockOidcVerifier({ ok: false, reason: "oidc_token_invalid" });
+    const res = await authorizeGatewayConnect({
+      auth: { mode: "token", token: "secret", allowTailscale: false },
+      connectAuth: { token: "secret", oidcToken: "bad-jwt" },
+      oidcVerifier: verifier,
+    });
+    // Should fall through to token check and succeed
+    expect(res.ok).toBe(true);
+    expect(res.method).toBe("token");
+  });
+
+  it("OIDC succeeds even in token mode when JWT is valid", async () => {
+    const verifier = createMockOidcVerifier({ user: "oidc-user" });
+    const res = await authorizeGatewayConnect({
+      auth: { mode: "token", token: "secret", allowTailscale: false },
+      connectAuth: { token: "wrong-token", oidcToken: "good-jwt" },
+      oidcVerifier: verifier,
+    });
+    // OIDC should succeed first, before token check
+    expect(res.ok).toBe(true);
+    expect(res.method).toBe("oidc");
+    expect(res.user).toBe("oidc-user");
   });
 });

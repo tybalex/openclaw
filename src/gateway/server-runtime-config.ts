@@ -12,6 +12,7 @@ import {
 import { normalizeControlUiBasePath } from "./control-ui-shared.js";
 import { resolveHooksConfig } from "./hooks.js";
 import { isLoopbackHost, resolveGatewayBindHost } from "./net.js";
+import { createOidcVerifier, type OidcVerifier } from "./oidc.js";
 
 export type GatewayRuntimeConfig = {
   bindHost: string;
@@ -26,6 +27,7 @@ export type GatewayRuntimeConfig = {
   tailscaleMode: "off" | "serve" | "funnel";
   hooksConfig: ReturnType<typeof resolveHooksConfig>;
   canvasHostEnabled: boolean;
+  oidcVerifier?: OidcVerifier;
 };
 
 export async function resolveGatewayRuntimeConfig(params: {
@@ -73,8 +75,9 @@ export async function resolveGatewayRuntimeConfig(params: {
   const hasToken = typeof resolvedAuth.token === "string" && resolvedAuth.token.trim().length > 0;
   const hasPassword =
     typeof resolvedAuth.password === "string" && resolvedAuth.password.trim().length > 0;
+  const hasOidc = authMode === "oidc" && resolvedAuth.oidcConfig != null;
   const hasSharedSecret =
-    (authMode === "token" && hasToken) || (authMode === "password" && hasPassword);
+    (authMode === "token" && hasToken) || (authMode === "password" && hasPassword) || hasOidc;
   const hooksConfig = resolveHooksConfig(params.cfg);
   const canvasHostEnabled =
     process.env.OPENCLAW_SKIP_CANVAS_HOST !== "1" && params.cfg.canvasHost?.enabled !== false;
@@ -94,6 +97,12 @@ export async function resolveGatewayRuntimeConfig(params: {
     );
   }
 
+  // Create OIDC verifier at startup (requires async JWKS discovery).
+  let oidcVerifier: OidcVerifier | undefined;
+  if (resolvedAuth.oidcConfig) {
+    oidcVerifier = await createOidcVerifier(resolvedAuth.oidcConfig);
+  }
+
   return {
     bindHost,
     controlUiEnabled,
@@ -109,5 +118,6 @@ export async function resolveGatewayRuntimeConfig(params: {
     tailscaleMode,
     hooksConfig,
     canvasHostEnabled,
+    oidcVerifier,
   };
 }

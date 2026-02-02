@@ -212,6 +212,7 @@ export function createGatewayHttpServer(opts: {
   handleHooksRequest: HooksRequestHandler;
   handlePluginRequest?: HooksRequestHandler;
   resolvedAuth: import("./auth.js").ResolvedGatewayAuth;
+  oidcVerifier?: import("./oidc.js").OidcVerifier;
   tlsOptions?: TlsOptions;
 }): HttpServer {
   const {
@@ -224,6 +225,7 @@ export function createGatewayHttpServer(opts: {
     handleHooksRequest,
     handlePluginRequest,
     resolvedAuth,
+    oidcVerifier,
   } = opts;
   const httpServer: HttpServer = opts.tlsOptions
     ? createHttpsServer(opts.tlsOptions, (req, res) => {
@@ -249,6 +251,7 @@ export function createGatewayHttpServer(opts: {
         await handleToolsInvokeHttpRequest(req, res, {
           auth: resolvedAuth,
           trustedProxies,
+          oidcVerifier,
         })
       ) {
         return;
@@ -265,6 +268,7 @@ export function createGatewayHttpServer(opts: {
             auth: resolvedAuth,
             config: openResponsesConfig,
             trustedProxies,
+            oidcVerifier,
           })
         ) {
           return;
@@ -275,6 +279,7 @@ export function createGatewayHttpServer(opts: {
           await handleOpenAiHttpRequest(req, res, {
             auth: resolvedAuth,
             trustedProxies,
+            oidcVerifier,
           })
         ) {
           return;

@@ -7,6 +7,7 @@ import type { RuntimeEnv } from "../runtime.js";
 import type { ResolvedGatewayAuth } from "./auth.js";
 import type { ChatAbortControllerEntry } from "./chat-abort.js";
 import type { HooksConfigResolved } from "./hooks.js";
+import type { OidcVerifier } from "./oidc.js";
 import type { DedupeEntry } from "./server-shared.js";
 import type { GatewayTlsRuntime } from "./server/tls.js";
 import type { GatewayWsClient } from "./server/ws-types.js";
@@ -31,6 +32,7 @@ export async function createGatewayRuntimeState(params: {
   openResponsesEnabled: boolean;
   openResponsesConfig?: import("../config/types.gateway.js").GatewayHttpResponsesConfig;
   resolvedAuth: ResolvedGatewayAuth;
+  oidcVerifier?: OidcVerifier;
   gatewayTls?: GatewayTlsRuntime;
   hooksConfig: () => HooksConfigResolved | null;
   pluginRegistry: PluginRegistry;
@@ -118,6 +120,7 @@ export async function createGatewayRuntimeState(params: {
       handleHooksRequest,
       handlePluginRequest,
       resolvedAuth: params.resolvedAuth,
+      oidcVerifier: params.oidcVerifier,
       tlsOptions: params.gatewayTls?.enabled ? params.gatewayTls.tlsOptions : undefined,
     });
     try {

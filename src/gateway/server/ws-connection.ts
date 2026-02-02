@@ -24,6 +24,7 @@ export function attachGatewayWsConnectionHandler(params: {
   canvasHostEnabled: boolean;
   canvasHostServerPort?: number;
   resolvedAuth: ResolvedGatewayAuth;
+  oidcVerifier?: import("../oidc.js").OidcVerifier;
   gatewayMethods: string[];
   events: string[];
   logGateway: SubsystemLogger;
@@ -48,6 +49,7 @@ export function attachGatewayWsConnectionHandler(params: {
     canvasHostEnabled,
     canvasHostServerPort,
     resolvedAuth,
+    oidcVerifier,
     gatewayMethods,
     events,
     logGateway,
@@ -240,6 +242,7 @@ export function attachGatewayWsConnectionHandler(params: {
       canvasHostUrl,
       connectNonce,
       resolvedAuth,
+      oidcVerifier,
       gatewayMethods,
       events,
       extraHandlers,

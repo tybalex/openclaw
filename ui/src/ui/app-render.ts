@@ -109,10 +109,10 @@ export function renderApp(state: AppViewState) {
           </button>
           <div class="brand">
             <div class="brand-logo">
-              <img src="/favicon.svg" alt="OpenClaw" />
+              <img src="brand-icon.png" alt="Personal Assistant" width="32" height="32" />
             </div>
             <div class="brand-text">
-              <div class="brand-title">OPENCLAW</div>
+              <div class="brand-title">PERSONAL ASSISTANT</div>
               <div class="brand-sub">Gateway Dashboard</div>
             </div>
           </div>
@@ -196,6 +196,8 @@ export function renderApp(state: AppViewState) {
                 cronEnabled: state.cronStatus?.enabled ?? null,
                 cronNext,
                 lastChannelsRefresh: state.channelsLastSuccess,
+                oidcLoggedIn: state.oidcLoggedIn,
+                oidcUser: state.oidcUser,
                 onSettingsChange: (next) => state.applySettings(next),
                 onPasswordChange: (next) => (state.password = next),
                 onSessionKeyChange: (next) => {
@@ -211,6 +213,8 @@ export function renderApp(state: AppViewState) {
                 },
                 onConnect: () => state.connect(),
                 onRefresh: () => state.loadOverview(),
+                onOidcLogin: () => state.handleOidcLogin(),
+                onOidcLogout: () => state.handleOidcLogout(),
               })
             : nothing
         }

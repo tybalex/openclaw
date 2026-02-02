@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { OidcVerifier } from "./oidc.js";
 import { createOpenClawTools } from "../agents/openclaw-tools.js";
 import {
   filterToolsByPolicy,
@@ -102,7 +103,12 @@ function mergeActionIntoArgsIfSupported(params: {
 export async function handleToolsInvokeHttpRequest(
   req: IncomingMessage,
   res: ServerResponse,
-  opts: { auth: ResolvedGatewayAuth; maxBodyBytes?: number; trustedProxies?: string[] },
+  opts: {
+    auth: ResolvedGatewayAuth;
+    maxBodyBytes?: number;
+    trustedProxies?: string[];
+    oidcVerifier?: OidcVerifier;
+  },
 ): Promise<boolean> {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
   if (url.pathname !== "/tools/invoke") {
@@ -118,9 +124,10 @@ export async function handleToolsInvokeHttpRequest(
   const token = getBearerToken(req);
   const authResult = await authorizeGatewayConnect({
     auth: opts.auth,
-    connectAuth: token ? { token, password: token } : null,
+    connectAuth: token ? { token, password: token, oidcToken: token } : null,
     req,
     trustedProxies: opts.trustedProxies ?? cfg.gateway?.trustedProxies,
+    oidcVerifier: opts.oidcVerifier,
   });
   if (!authResult.ok) {
     sendUnauthorized(res);

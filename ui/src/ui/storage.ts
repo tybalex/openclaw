@@ -18,12 +18,28 @@ export type UiSettings = {
 export function loadSettings(): UiSettings {
   const defaultUrl = (() => {
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    return `${proto}://${location.host}`;
+    // In dev mode the UI runs on a separate Vite port (e.g. 3003) while the
+    // gateway listens on 18789. Default to the gateway's standard port when
+    // the page is served from localhost on a non-gateway port.
+    const host = location.hostname;
+    const port = location.port;
+    const isLocalDev =
+      (host === "localhost" || host === "127.0.0.1") &&
+      port &&
+      port !== "18789";
+    return isLocalDev
+      ? `${proto}://${host}:18789`
+      : `${proto}://${location.host}`;
   })();
+
+  // In local dev, use a matching dev token so the UI connects without manual config.
+  const defaultToken = defaultUrl.includes("localhost") || defaultUrl.includes("127.0.0.1")
+    ? "dev"
+    : "";
 
   const defaults: UiSettings = {
     gatewayUrl: defaultUrl,
-    token: "",
+    token: defaultToken,
     sessionKey: "main",
     lastActiveSessionKey: "main",
     theme: "system",
@@ -45,7 +61,10 @@ export function loadSettings(): UiSettings {
         typeof parsed.gatewayUrl === "string" && parsed.gatewayUrl.trim()
           ? parsed.gatewayUrl.trim()
           : defaults.gatewayUrl,
-      token: typeof parsed.token === "string" ? parsed.token : defaults.token,
+      token:
+        typeof parsed.token === "string" && parsed.token.trim()
+          ? parsed.token
+          : defaults.token,
       sessionKey:
         typeof parsed.sessionKey === "string" && parsed.sessionKey.trim()
           ? parsed.sessionKey.trim()

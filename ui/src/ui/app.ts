@@ -74,6 +74,7 @@ import {
 } from "./app-tool-stream";
 import { resolveInjectedAssistantIdentity } from "./assistant-identity";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity";
+import { startOidcLogin, clearOidcTokens, getOidcUserEmail, hasOidcTokens } from "./oidc";
 import { loadSettings, type UiSettings } from "./storage";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types";
 
@@ -155,6 +156,8 @@ export class OpenClawApp extends LitElement {
   @state() execApprovalBusy = false;
   @state() execApprovalError: string | null = null;
   @state() pendingGatewayUrl: string | null = null;
+  @state() oidcLoggedIn = false;
+  @state() oidcUser: string | null = null;
 
   @state() configLoading = false;
   @state() configRaw = "{\n}\n";
@@ -454,6 +457,22 @@ export class OpenClawApp extends LitElement {
 
   handleGatewayUrlCancel() {
     this.pendingGatewayUrl = null;
+  }
+
+  handleOidcLogin() {
+    void startOidcLogin();
+  }
+
+  handleOidcLogout() {
+    clearOidcTokens();
+    this.oidcLoggedIn = false;
+    this.oidcUser = null;
+    this.connect();
+  }
+
+  refreshOidcState() {
+    this.oidcLoggedIn = hasOidcTokens();
+    this.oidcUser = getOidcUserEmail();
   }
 
   // Sidebar handlers for tool output viewing
