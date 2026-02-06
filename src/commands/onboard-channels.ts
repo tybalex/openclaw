@@ -612,32 +612,35 @@ export async function setupChannels(
     const choice = (await prompter.select({
       message: "Select channel (QuickStart)",
       options: [
-        ...buildSelectionOptions(entries),
         {
           value: "__skip__",
           label: "Skip for now",
           hint: `You can add channels later via \`${formatCliCommand("openclaw channels add")}\``,
         },
+        ...buildSelectionOptions(entries),
       ],
-      initialValue: quickstartDefault,
+      initialValue: "__skip__",
     })) as ChannelChoice | "__skip__";
     if (choice !== "__skip__") {
       await handleChannelChoice(choice);
     }
   } else {
     const doneValue = "__done__" as const;
-    const initialValue = options?.initialSelection?.[0] ?? quickstartDefault;
+    const initialValue = options?.initialSelection?.[0] ?? "__done__";
     while (true) {
       const { entries } = getChannelEntries();
       const choice = (await prompter.select({
         message: "Select a channel",
         options: [
-          ...buildSelectionOptions(entries),
           {
             value: doneValue,
-            label: "Finished",
-            hint: selection.length > 0 ? "Done" : "Skip for now",
+            label: "Skip for now",
+            hint:
+              selection.length > 0
+                ? "Done"
+                : `Add channels later via \`${formatCliCommand("openclaw channels add")}\``,
           },
+          ...buildSelectionOptions(entries),
         ],
         initialValue,
       })) as ChannelChoice | typeof doneValue;

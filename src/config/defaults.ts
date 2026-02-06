@@ -12,17 +12,8 @@ let defaultWarnState: WarnState = { warned: false };
 type AnthropicAuthDefaultsMode = "api_key" | "oauth";
 
 const DEFAULT_MODEL_ALIASES: Readonly<Record<string, string>> = {
-  // Anthropic (pi-ai catalog uses "latest" ids without date suffix)
-  opus: "anthropic/claude-opus-4-5",
-  sonnet: "anthropic/claude-sonnet-4-5",
-
-  // OpenAI
-  gpt: "openai/gpt-5.2",
-  "gpt-mini": "openai/gpt-5-mini",
-
-  // Google Gemini (3.x are preview ids in the catalog)
-  gemini: "google/gemini-3-pro-preview",
-  "gemini-flash": "google/gemini-3-flash-preview",
+  // NVIDIA (only supported provider)
+  opus: "nvidia/aws/anthropic/claude-opus-4-5",
 };
 
 const DEFAULT_MODEL_COST: ModelDefinitionConfig["cost"] = {

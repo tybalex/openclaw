@@ -175,11 +175,11 @@ export function resolveConfiguredModelRef(params: {
         return aliasMatch.ref;
       }
 
-      // Default to anthropic if no provider is specified, but warn as this is deprecated.
+      // Default to nvidia if no provider is specified, but warn as this is deprecated.
       console.warn(
-        `[openclaw] Model "${trimmed}" specified without provider. Falling back to "anthropic/${trimmed}". Please use "anthropic/${trimmed}" in your config.`,
+        `[openclaw] Model "${trimmed}" specified without provider. Falling back to "${DEFAULT_PROVIDER}/${trimmed}". Please use "${DEFAULT_PROVIDER}/${trimmed}" in your config.`,
       );
-      return { provider: "anthropic", model: trimmed };
+      return { provider: DEFAULT_PROVIDER, model: trimmed };
     }
 
     const resolved = resolveModelRefFromString({
