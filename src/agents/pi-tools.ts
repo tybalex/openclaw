@@ -157,6 +157,8 @@ export function createOpenClawCodingTools(options?: {
   hasRepliedRef?: { value: boolean };
   /** If true, the model has native vision capability */
   modelHasVision?: boolean;
+  /** Function to get the current user's OIDC token (for Glean search). */
+  getOidcToken?: () => string | null | Promise<string | null>;
 }): AnyAgentTool[] {
   const execToolName = "exec";
   const sandbox = options?.sandbox?.enabled ? options.sandbox : undefined;
@@ -349,6 +351,7 @@ export function createOpenClawCodingTools(options?: {
       hasRepliedRef: options?.hasRepliedRef,
       modelHasVision: options?.modelHasVision,
       requesterAgentIdOverride: agentId,
+      getOidcToken: options?.getOidcToken,
     }),
   ];
   const coreToolNames = new Set(

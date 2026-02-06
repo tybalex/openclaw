@@ -27,6 +27,7 @@ type ConnectAuth = {
   token?: string;
   password?: string;
   oidcToken?: string;
+  gleanToken?: string; // Azure AD token for Glean/ECS API
 };
 
 type TailscaleUser = {

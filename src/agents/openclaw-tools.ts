@@ -8,6 +8,7 @@ import { createBrowserTool } from "./tools/browser-tool.js";
 import { createCanvasTool } from "./tools/canvas-tool.js";
 import { createCronTool } from "./tools/cron-tool.js";
 import { createGatewayTool } from "./tools/gateway-tool.js";
+import { createGleanSearchTool } from "./tools/glean-search.js";
 import { createImageTool } from "./tools/image-tool.js";
 import { createMessageTool } from "./tools/message-tool.js";
 import { createNodesTool } from "./tools/nodes-tool.js";
@@ -53,6 +54,8 @@ export function createOpenClawTools(options?: {
   modelHasVision?: boolean;
   /** Explicit agent ID override for cron/hook sessions. */
   requesterAgentIdOverride?: string;
+  /** Function to get the current user's OIDC SSO token (for Glean search). */
+  getOidcToken?: () => string | null | Promise<string | null>;
 }): AnyAgentTool[] {
   const imageTool = options?.agentDir?.trim()
     ? createImageTool({
@@ -139,6 +142,17 @@ export function createOpenClawTools(options?: {
     ...(webFetchTool ? [webFetchTool] : []),
     ...(imageTool ? [imageTool] : []),
   ];
+
+  // Add Glean search if OIDC token getter is provided and ECS is configured
+  const gleanSearchTool = options?.getOidcToken
+    ? createGleanSearchTool({
+        getSSOToken: options.getOidcToken,
+        enabled: Boolean(process.env.ECS_CONTENT_SEARCH_URL),
+      })
+    : null;
+  if (gleanSearchTool) {
+    tools.push(gleanSearchTool);
+  }
 
   const pluginTools = resolvePluginTools({
     context: {

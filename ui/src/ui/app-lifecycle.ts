@@ -26,6 +26,10 @@ import {
   scheduleTokenRefresh,
   cancelTokenRefresh,
 } from "./oidc";
+import {
+  handleGleanCallback,
+  isGleanCallbackPage,
+} from "./glean-auth";
 
 type LifecycleHost = {
   basePath: string;
@@ -47,6 +51,19 @@ type LifecycleHost = {
 export function handleConnected(host: LifecycleHost) {
   host.basePath = inferBasePath();
   applySettingsFromUrl(host as unknown as Parameters<typeof applySettingsFromUrl>[0]);
+
+  // Glean callback (Azure AD for ECS API) - handle in popup, then close
+  if (isGleanCallbackPage()) {
+    void handleGleanCallback().then((success) => {
+      if (window.opener) {
+        window.opener.postMessage({ type: "glean-auth-complete", success }, "*");
+        window.close();
+      } else {
+        window.location.href = "/chat";
+      }
+    });
+    return;
+  }
 
   // OIDC callback must be detected BEFORE syncTabWithLocation, which rewrites
   // unknown paths (like /callback) to /chat and destroys the query params.
@@ -78,6 +95,14 @@ export function handleConnected(host: LifecycleHost) {
   syncThemeWithSettings(host as unknown as Parameters<typeof syncThemeWithSettings>[0]);
   attachThemeListener(host as unknown as Parameters<typeof attachThemeListener>[0]);
   window.addEventListener("popstate", host.popStateHandler);
+
+  // Listen for Glean auth completion from popup
+  window.addEventListener("message", (event) => {
+    if (event.data?.type === "glean-auth-complete" && event.data?.success) {
+      // Reload to pick up the new Glean token
+      window.location.reload();
+    }
+  });
 
   // Require NVIDIA SSO before proceeding. If no valid OIDC token,
   // try a silent refresh; if that fails, redirect to SSO.

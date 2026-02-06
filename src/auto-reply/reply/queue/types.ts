@@ -55,6 +55,10 @@ export type FollowupRun = {
     senderName?: string;
     senderUsername?: string;
     senderE164?: string;
+    /** OIDC token for user-context APIs (Glean search, etc.). */
+    oidcToken?: string;
+    /** Azure AD token specifically for Glean/ECS API. */
+    gleanToken?: string;
     sessionFile: string;
     workspaceDir: string;
     config: OpenClawConfig;

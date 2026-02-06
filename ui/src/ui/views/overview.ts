@@ -3,6 +3,7 @@ import type { GatewayHelloOk } from "../gateway";
 import type { UiSettings } from "../storage";
 import { formatAgo, formatDurationMs } from "../format";
 import { formatNextRun } from "../presenter";
+import { hasGleanAuth, startGleanLogin, logoutGlean } from "../glean-auth";
 
 export type OverviewProps = {
   connected: boolean;
@@ -172,6 +173,15 @@ export function renderOverview(props: OverviewProps) {
                   <button class="btn btn-sm" @click=${() => props.onOidcLogout()}>Sign out</button>
                 </div>`
               : html`<button class="btn primary" @click=${() => props.onOidcLogin()}>Sign in with NVIDIA</button>`}
+          </div>
+          <div class="field">
+            <span>Glean Search</span>
+            ${hasGleanAuth()
+              ? html`<div class="row" style="gap: 8px; align-items: center;">
+                  <span class="badge ok">Connected</span>
+                  <button class="btn btn-sm" @click=${() => { logoutGlean(); window.location.reload(); }}>Disconnect</button>
+                </div>`
+              : html`<button class="btn" @click=${() => startGleanLogin()}>Connect to Glean</button>`}
           </div>
           <label class="field">
             <span>Default Session Key</span>

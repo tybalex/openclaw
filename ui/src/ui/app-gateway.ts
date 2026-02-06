@@ -1,5 +1,6 @@
 import type { OpenClawApp } from "./app";
 import { getValidOidcToken } from "./oidc";
+import { getGleanToken } from "./glean-auth";
 import type { EventLogEntry } from "./app-events";
 import type { ExecApprovalRequest } from "./controllers/exec-approval";
 import type { GatewayEventFrame, GatewayHelloOk } from "./gateway";
@@ -124,6 +125,7 @@ export function connectGateway(host: GatewayHost) {
     token: host.settings.token.trim() ? host.settings.token : undefined,
     password: host.password.trim() ? host.password : undefined,
     oidcToken: getValidOidcToken() ?? undefined,
+    gleanToken: getGleanToken() ?? undefined,
     clientName: "openclaw-control-ui",
     mode: "webchat",
     onHello: (hello) => {

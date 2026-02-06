@@ -237,6 +237,11 @@ export async function runEmbeddedAttempt(
           replyToMode: params.replyToMode,
           hasRepliedRef: params.hasRepliedRef,
           modelHasVision,
+          // For Glean search: prefer dedicated gleanToken (Azure AD), fall back to oidcToken
+          getOidcToken:
+            params.gleanToken || params.oidcToken
+              ? () => params.gleanToken ?? params.oidcToken ?? null
+              : undefined,
         });
     const tools = sanitizeToolsForGoogle({ tools: toolsRaw, provider: params.provider });
     logToolSchemasForGoogle({ tools, provider: params.provider });

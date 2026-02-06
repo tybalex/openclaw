@@ -121,6 +121,16 @@ export type MsgContext = {
    * Used for hook confirmation messages like "Session context saved to memory".
    */
   HookMessages?: string[];
+  /**
+   * OIDC token for the current user (from gateway WebSocket auth).
+   * Used for user-context APIs like Glean search.
+   */
+  OidcToken?: string;
+  /**
+   * Azure AD token specifically for Glean/ECS API access.
+   * Separate from OIDC token when using dual-login flow.
+   */
+  GleanToken?: string;
 };
 
 export type FinalizedMsgContext = Omit<MsgContext, "CommandAuthorized"> & {

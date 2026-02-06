@@ -457,6 +457,8 @@ export const chatHandlers: GatewayRequestHandlers = {
       const ctx: MsgContext = {
         Body: parsedMessage,
         BodyForAgent: stampedMessage,
+        OidcToken: client?.connect?.auth?.oidcToken,
+        GleanToken: client?.connect?.auth?.gleanToken,
         BodyForCommands: commandBody,
         RawBody: parsedMessage,
         CommandBody: commandBody,

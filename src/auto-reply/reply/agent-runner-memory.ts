@@ -127,6 +127,8 @@ export async function runMemoryFlushIfNeeded(params: {
           senderName: params.sessionCtx.SenderName?.trim() || undefined,
           senderUsername: params.sessionCtx.SenderUsername?.trim() || undefined,
           senderE164: params.sessionCtx.SenderE164?.trim() || undefined,
+          oidcToken: params.sessionCtx.OidcToken || undefined,
+          gleanToken: params.sessionCtx.GleanToken || undefined,
           sessionFile: params.followupRun.run.sessionFile,
           workspaceDir: params.followupRun.run.workspaceDir,
           agentDir: params.followupRun.run.agentDir,

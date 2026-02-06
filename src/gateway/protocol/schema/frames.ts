@@ -58,6 +58,7 @@ export const ConnectParamsSchema = Type.Object(
           token: Type.Optional(Type.String()),
           password: Type.Optional(Type.String()),
           oidcToken: Type.Optional(Type.String()),
+          gleanToken: Type.Optional(Type.String()), // Azure AD token for Glean/ECS API
         },
         { additionalProperties: false },
       ),

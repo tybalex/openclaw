@@ -233,6 +233,7 @@ export async function handleToolsInvokeHttpRequest(
       groupPolicy,
       subagentPolicy,
     ]),
+    getOidcToken: token ? () => token : undefined,
   });
 
   const coreToolNames = new Set(

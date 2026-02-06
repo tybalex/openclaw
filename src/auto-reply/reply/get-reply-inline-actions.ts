@@ -180,6 +180,11 @@ export async function handleInlineActions(params: {
         agentDir,
         workspaceDir,
         config: cfg,
+        // For Glean search: prefer dedicated GleanToken (Azure AD), fall back to OidcToken
+        getOidcToken:
+          ctx.GleanToken || ctx.OidcToken
+            ? () => ctx.GleanToken ?? ctx.OidcToken ?? null
+            : undefined,
       });
 
       const tool = tools.find((candidate) => candidate.name === dispatch.toolName);

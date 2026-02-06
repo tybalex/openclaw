@@ -31,6 +31,10 @@ export type EmbeddedRunAttemptParams = {
   senderName?: string | null;
   senderUsername?: string | null;
   senderE164?: string | null;
+  /** OIDC token for the current user (used for Glean search and other user-context APIs). */
+  oidcToken?: string | null;
+  /** Azure AD token specifically for Glean/ECS API. */
+  gleanToken?: string | null;
   currentChannelId?: string;
   currentThreadTs?: string;
   replyToMode?: "off" | "first" | "all";

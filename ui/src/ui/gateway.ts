@@ -49,6 +49,7 @@ export type GatewayBrowserClientOptions = {
   token?: string;
   password?: string;
   oidcToken?: string;
+  gleanToken?: string; // Azure AD token for Glean/ECS API
   clientName?: GatewayClientName;
   clientVersion?: string;
   platform?: string;
@@ -157,11 +158,12 @@ export class GatewayBrowserClient {
       canFallbackToShared = Boolean(storedToken && this.opts.token);
     }
     const auth =
-      authToken || this.opts.password || this.opts.oidcToken
+      authToken || this.opts.password || this.opts.oidcToken || this.opts.gleanToken
         ? {
             token: authToken,
             password: this.opts.password,
             oidcToken: this.opts.oidcToken,
+            gleanToken: this.opts.gleanToken,
           }
         : undefined;
 
