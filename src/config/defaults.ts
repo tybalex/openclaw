@@ -430,6 +430,33 @@ export function applyContextPruningDefaults(cfg: OpenClawConfig): OpenClawConfig
   };
 }
 
+/**
+ * Apply default gateway auth config.
+ * Sets OIDC mode with NVIDIA SSO when no auth config exists.
+ */
+export function applyGatewayDefaults(cfg: OpenClawConfig): OpenClawConfig {
+  const auth = cfg.gateway?.auth;
+  // If auth is already configured (any mode, token, or password set), don't override.
+  if (auth?.mode || auth?.token || auth?.password) {
+    return cfg;
+  }
+
+  return {
+    ...cfg,
+    gateway: {
+      ...cfg.gateway,
+      auth: {
+        ...auth,
+        mode: "oidc",
+        oidc: auth?.oidc ?? {
+          issuer: "https://stg.login.nvidia.com",
+          audience: "9bONc0-8SKqkjS4GfDZuCLLCOwYGpyX4bOQetfyYzNM",
+        },
+      },
+    },
+  };
+}
+
 export function applyCompactionDefaults(cfg: OpenClawConfig): OpenClawConfig {
   const defaults = cfg.agents?.defaults;
   if (!defaults) {

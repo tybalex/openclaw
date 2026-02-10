@@ -18,24 +18,16 @@ export type UiSettings = {
 export function loadSettings(): UiSettings {
   const defaultUrl = (() => {
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    // In dev mode the UI runs on a separate Vite port (e.g. 3003) while the
-    // gateway listens on 18789. Default to the gateway's standard port when
-    // the page is served from localhost on a non-gateway port.
     const host = location.hostname;
-    const port = location.port;
-    const isLocalDev =
-      (host === "localhost" || host === "127.0.0.1") &&
-      port &&
-      port !== "18789";
-    return isLocalDev
-      ? `${proto}://${host}:18789`
+    // Default to ws://localhost:3000 for local dev; otherwise use the page's origin.
+    const isLocal = host === "localhost" || host === "127.0.0.1";
+    return isLocal
+      ? `${proto}://${host}:3000`
       : `${proto}://${location.host}`;
   })();
 
-  // In local dev, use a matching dev token so the UI connects without manual config.
-  const defaultToken = defaultUrl.includes("localhost") || defaultUrl.includes("127.0.0.1")
-    ? "dev"
-    : "";
+  // No default token — OIDC mode doesn't need one.
+  const defaultToken = "";
 
   const defaults: UiSettings = {
     gatewayUrl: defaultUrl,

@@ -145,7 +145,7 @@ export type GatewayServerOptions = {
 };
 
 export async function startGatewayServer(
-  port = 18789,
+  port = 3000,
   opts: GatewayServerOptions = {},
 ): Promise<GatewayServer> {
   // Ensure all default port derivations (browser/canvas) see the actual runtime port.

@@ -97,7 +97,7 @@ export function renderOverview(props: OverviewProps) {
     return html`
       <div class="muted" style="margin-top: 8px">
         This page is HTTP, so the browser blocks device identity. Use HTTPS (Tailscale Serve) or open
-        <span class="mono">http://127.0.0.1:18789</span> on the gateway host.
+        <span class="mono">http://127.0.0.1:3000</span> on the gateway host.
         <div style="margin-top: 6px">
           If you must stay on HTTP, set
           <span class="mono">gateway.controlUi.allowInsecureAuth: true</span> (token-only).
@@ -139,7 +139,7 @@ export function renderOverview(props: OverviewProps) {
                 const v = (e.target as HTMLInputElement).value;
                 props.onSettingsChange({ ...props.settings, gatewayUrl: v });
               }}
-              placeholder="ws://100.x.y.z:18789"
+              placeholder="ws://localhost:3000"
             />
           </label>
           <label class="field">
