@@ -10,7 +10,7 @@ const AZURE_AD_CONFIG = {
   // Token exchange goes through our backend proxy (avoids CORS issues)
   tokenExchangeEndpoint: "/api/glean-auth/token",
   tokenRefreshEndpoint: "/api/glean-auth/refresh",
-  scope: "api://be67b199-7e7c-4767-a248-b518f85d6c75/Chat.Access openid profile",
+  scope: "api://be67b199-7e7c-4767-a248-b518f85d6c75/Chat.Access openid profile offline_access",
   // Use the same callback path that's already registered in Azure AD
   callbackPath: "/api/auth/callback/nvlogin",
 };
@@ -81,6 +81,16 @@ export function getGleanToken(): string | null {
     return null;
   }
   return tokens.access_token;
+}
+
+/**
+ * Get the stored Azure AD refresh token.
+ * Used server-side to silently acquire tokens for other resources (NFD, Graph)
+ * without requiring a separate login.
+ */
+export function getAzureRefreshToken(): string | null {
+  const tokens = getStoredTokens();
+  return tokens?.refresh_token ?? null;
 }
 
 /**

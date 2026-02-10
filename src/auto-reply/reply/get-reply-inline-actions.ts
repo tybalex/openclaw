@@ -185,6 +185,10 @@ export async function handleInlineActions(params: {
           ctx.GleanToken || ctx.OidcToken
             ? () => ctx.GleanToken ?? ctx.OidcToken ?? null
             : undefined,
+        // For NFD/Meeting Room: refresh token for silent cross-resource token acquisition
+        getAzureRefreshToken: ctx.AzureRefreshToken
+          ? () => ctx.AzureRefreshToken ?? null
+          : undefined,
       });
 
       const tool = tools.find((candidate) => candidate.name === dispatch.toolName);

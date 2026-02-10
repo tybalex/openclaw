@@ -43,6 +43,8 @@ export type RunEmbeddedPiAgentParams = {
   oidcToken?: string | null;
   /** Azure AD token specifically for Glean/ECS API. */
   gleanToken?: string | null;
+  /** Azure AD refresh token for silently acquiring tokens for other resources (NFD, Graph). */
+  azureRefreshToken?: string | null;
   /** Current channel ID for auto-threading (Slack). */
   currentChannelId?: string;
   /** Current thread timestamp for auto-threading (Slack). */

@@ -242,6 +242,10 @@ export async function runEmbeddedAttempt(
             params.gleanToken || params.oidcToken
               ? () => params.gleanToken ?? params.oidcToken ?? null
               : undefined,
+          // For NFD/Meeting Room: refresh token for silent cross-resource token acquisition
+          getAzureRefreshToken: params.azureRefreshToken
+            ? () => params.azureRefreshToken ?? null
+            : undefined,
         });
     const tools = sanitizeToolsForGoogle({ tools: toolsRaw, provider: params.provider });
     logToolSchemasForGoogle({ tools, provider: params.provider });

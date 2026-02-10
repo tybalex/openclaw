@@ -8,9 +8,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 const AZURE_AD_CONFIG = {
-  clientId: process.env.GLEAN_AZURE_CLIENT_ID ?? "",
-  clientSecret: process.env.GLEAN_AZURE_CLIENT_SECRET ?? "",
-  tenantId: process.env.GLEAN_AZURE_TENANT_ID ?? "",
+  clientId: process.env.AZURE_AD_CLIENT_ID ?? "",
+  clientSecret: process.env.AZURE_AD_CLIENT_SECRET ?? "",
+  tenantId: process.env.AZURE_AD_TENANT_ID ?? "",
   get tokenEndpoint() {
     return `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`;
   },

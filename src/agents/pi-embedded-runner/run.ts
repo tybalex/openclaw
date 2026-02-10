@@ -330,6 +330,7 @@ export async function runEmbeddedPiAgent(
             senderE164: params.senderE164,
             oidcToken: params.oidcToken,
             gleanToken: params.gleanToken,
+            azureRefreshToken: params.azureRefreshToken,
             currentChannelId: params.currentChannelId,
             currentThreadTs: params.currentThreadTs,
             replyToMode: params.replyToMode,

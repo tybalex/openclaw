@@ -131,6 +131,11 @@ export type MsgContext = {
    * Separate from OIDC token when using dual-login flow.
    */
   GleanToken?: string;
+  /**
+   * Azure AD refresh token for silently acquiring tokens for other resources
+   * (e.g. NFD, Microsoft Graph) without requiring a separate login.
+   */
+  AzureRefreshToken?: string;
 };
 
 export type FinalizedMsgContext = Omit<MsgContext, "CommandAuthorized"> & {

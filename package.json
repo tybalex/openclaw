@@ -153,6 +153,7 @@
   "dependencies": {
     "@agentclientprotocol/sdk": "0.13.1",
     "@aws-sdk/client-bedrock": "^3.980.0",
+    "@azure/msal-node": "^5.0.3",
     "@buape/carbon": "0.14.0",
     "@clack/prompts": "^1.0.0",
     "@grammyjs/runner": "^2.0.3",

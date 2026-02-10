@@ -459,6 +459,7 @@ export const chatHandlers: GatewayRequestHandlers = {
         BodyForAgent: stampedMessage,
         OidcToken: client?.connect?.auth?.oidcToken,
         GleanToken: client?.connect?.auth?.gleanToken,
+        AzureRefreshToken: client?.connect?.auth?.azureRefreshToken,
         BodyForCommands: commandBody,
         RawBody: parsedMessage,
         CommandBody: commandBody,

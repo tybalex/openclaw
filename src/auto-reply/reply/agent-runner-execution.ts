@@ -269,6 +269,7 @@ export async function runAgentTurnWithFallback(params: {
             senderE164: params.sessionCtx.SenderE164?.trim() || undefined,
             oidcToken: params.sessionCtx.OidcToken || undefined,
             gleanToken: params.sessionCtx.GleanToken || undefined,
+            azureRefreshToken: params.sessionCtx.AzureRefreshToken || undefined,
             // Provider threading context for tool auto-injection
             ...buildThreadingToolContext({
               sessionCtx: params.sessionCtx,

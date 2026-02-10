@@ -175,13 +175,13 @@ export function renderOverview(props: OverviewProps) {
               : html`<button class="btn primary" @click=${() => props.onOidcLogin()}>Sign in with NVIDIA</button>`}
           </div>
           <div class="field">
-            <span>Glean Search</span>
+            <span>NVIDIA Services</span>
             ${hasGleanAuth()
               ? html`<div class="row" style="gap: 8px; align-items: center;">
                   <span class="badge ok">Connected</span>
                   <button class="btn btn-sm" @click=${() => { logoutGlean(); window.location.reload(); }}>Disconnect</button>
                 </div>`
-              : html`<button class="btn" @click=${() => startGleanLogin()}>Connect to Glean</button>`}
+              : html`<button class="btn" @click=${() => startGleanLogin()}>Connect NVIDIA Services</button>`}
           </div>
           <label class="field">
             <span>Default Session Key</span>

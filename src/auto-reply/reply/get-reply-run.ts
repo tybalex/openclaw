@@ -378,6 +378,7 @@ export async function runPreparedReply(
       senderE164: sessionCtx.SenderE164?.trim() || undefined,
       oidcToken: sessionCtx.OidcToken || undefined,
       gleanToken: sessionCtx.GleanToken || undefined,
+      azureRefreshToken: sessionCtx.AzureRefreshToken || undefined,
       sessionFile,
       workspaceDir,
       config: cfg,

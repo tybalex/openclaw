@@ -129,6 +129,7 @@ export async function runMemoryFlushIfNeeded(params: {
           senderE164: params.sessionCtx.SenderE164?.trim() || undefined,
           oidcToken: params.sessionCtx.OidcToken || undefined,
           gleanToken: params.sessionCtx.GleanToken || undefined,
+          azureRefreshToken: params.sessionCtx.AzureRefreshToken || undefined,
           sessionFile: params.followupRun.run.sessionFile,
           workspaceDir: params.followupRun.run.workspaceDir,
           agentDir: params.followupRun.run.agentDir,

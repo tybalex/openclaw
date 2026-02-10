@@ -59,6 +59,8 @@ export type FollowupRun = {
     oidcToken?: string;
     /** Azure AD token specifically for Glean/ECS API. */
     gleanToken?: string;
+    /** Azure AD refresh token for cross-resource silent acquisition (NFD, Graph). */
+    azureRefreshToken?: string;
     sessionFile: string;
     workspaceDir: string;
     config: OpenClawConfig;

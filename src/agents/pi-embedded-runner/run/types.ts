@@ -35,6 +35,8 @@ export type EmbeddedRunAttemptParams = {
   oidcToken?: string | null;
   /** Azure AD token specifically for Glean/ECS API. */
   gleanToken?: string | null;
+  /** Azure AD refresh token for silently acquiring tokens for other resources (NFD, Graph). */
+  azureRefreshToken?: string | null;
   currentChannelId?: string;
   currentThreadTs?: string;
   replyToMode?: "off" | "first" | "all";

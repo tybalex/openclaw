@@ -28,6 +28,7 @@ type ConnectAuth = {
   password?: string;
   oidcToken?: string;
   gleanToken?: string; // Azure AD token for Glean/ECS API
+  azureRefreshToken?: string; // Azure AD refresh token for cross-resource silent acquisition
 };
 
 type TailscaleUser = {

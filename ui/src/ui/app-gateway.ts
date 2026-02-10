@@ -1,6 +1,6 @@
 import type { OpenClawApp } from "./app";
 import { getValidOidcToken } from "./oidc";
-import { getGleanToken } from "./glean-auth";
+import { getGleanToken, getAzureRefreshToken } from "./glean-auth";
 import type { EventLogEntry } from "./app-events";
 import type { ExecApprovalRequest } from "./controllers/exec-approval";
 import type { GatewayEventFrame, GatewayHelloOk } from "./gateway";
@@ -126,6 +126,7 @@ export function connectGateway(host: GatewayHost) {
     password: host.password.trim() ? host.password : undefined,
     oidcToken: getValidOidcToken() ?? undefined,
     gleanToken: getGleanToken() ?? undefined,
+    azureRefreshToken: getAzureRefreshToken() ?? undefined,
     clientName: "openclaw-control-ui",
     mode: "webchat",
     onHello: (hello) => {

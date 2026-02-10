@@ -50,6 +50,7 @@ export type GatewayBrowserClientOptions = {
   password?: string;
   oidcToken?: string;
   gleanToken?: string; // Azure AD token for Glean/ECS API
+  azureRefreshToken?: string; // Azure AD refresh token for silent cross-resource acquisition
   clientName?: GatewayClientName;
   clientVersion?: string;
   platform?: string;
@@ -164,6 +165,7 @@ export class GatewayBrowserClient {
             password: this.opts.password,
             oidcToken: this.opts.oidcToken,
             gleanToken: this.opts.gleanToken,
+            azureRefreshToken: this.opts.azureRefreshToken,
           }
         : undefined;
 

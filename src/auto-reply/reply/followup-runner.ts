@@ -153,6 +153,7 @@ export function createFollowupRunner(params: {
               senderE164: queued.run.senderE164,
               oidcToken: queued.run.oidcToken,
               gleanToken: queued.run.gleanToken,
+              azureRefreshToken: queued.run.azureRefreshToken,
               sessionFile: queued.run.sessionFile,
               workspaceDir: queued.run.workspaceDir,
               config: queued.run.config,

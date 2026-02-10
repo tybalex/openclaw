@@ -10,7 +10,9 @@ import { createCronTool } from "./tools/cron-tool.js";
 import { createGatewayTool } from "./tools/gateway-tool.js";
 import { createGleanSearchTool } from "./tools/glean-search.js";
 import { createImageTool } from "./tools/image-tool.js";
+import { createMeetingRoomTool } from "./tools/meeting-room.js";
 import { createMessageTool } from "./tools/message-tool.js";
+import { createNfdDeskTool } from "./tools/nfd-desk.js";
 import { createNodesTool } from "./tools/nodes-tool.js";
 import { createSessionStatusTool } from "./tools/session-status-tool.js";
 import { createSessionsHistoryTool } from "./tools/sessions-history-tool.js";
@@ -56,6 +58,8 @@ export function createOpenClawTools(options?: {
   requesterAgentIdOverride?: string;
   /** Function to get the current user's OIDC SSO token (for Glean search). */
   getOidcToken?: () => string | null | Promise<string | null>;
+  /** Function to get the Azure AD refresh token (for NFD desk, meeting rooms via silent acquisition). */
+  getAzureRefreshToken?: () => string | null | Promise<string | null>;
 }): AnyAgentTool[] {
   const imageTool = options?.agentDir?.trim()
     ? createImageTool({
@@ -152,6 +156,27 @@ export function createOpenClawTools(options?: {
     : null;
   if (gleanSearchTool) {
     tools.push(gleanSearchTool);
+  }
+
+  // Add NFD desk tool if refresh token getter is provided and NFD is configured
+  const nfdDeskTool = options?.getAzureRefreshToken
+    ? createNfdDeskTool({
+        getRefreshToken: options.getAzureRefreshToken,
+        enabled: Boolean(process.env.NFD_SCOPE),
+      })
+    : null;
+  if (nfdDeskTool) {
+    tools.push(nfdDeskTool);
+  }
+
+  // Add meeting room tool if refresh token getter is provided and Azure AD is configured
+  const meetingRoomTool = options?.getAzureRefreshToken
+    ? createMeetingRoomTool({
+        getRefreshToken: options.getAzureRefreshToken,
+      })
+    : null;
+  if (meetingRoomTool) {
+    tools.push(meetingRoomTool);
   }
 
   const pluginTools = resolvePluginTools({

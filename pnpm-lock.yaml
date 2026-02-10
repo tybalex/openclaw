@@ -24,6 +24,9 @@ importers:
       '@aws-sdk/client-bedrock':
         specifier: ^3.980.0
         version: 3.980.0
+      '@azure/msal-node':
+        specifier: ^5.0.3
+        version: 5.0.3
       '@buape/carbon':
         specifier: 0.14.0
         version: 0.14.0(hono@4.11.7)
@@ -846,9 +849,17 @@ packages:
     resolution: {integrity: sha512-IkzF7Pywt6QKTS0kwdCv/XV8x8JXknZDvSjj/IccooxnP373T5jaadO3FnOrbWo3S0UqkfIDyZNTaQ/oAgRdXw==}
     engines: {node: '>=0.8.0'}
 
+  '@azure/msal-common@16.0.3':
+    resolution: {integrity: sha512-3aedNnM0CHVuVZ+BqembdZWgovqe96BJ4YxGoIK0+qhoBZQsAhfwXdhjen72K94pkSQHtzlJ7fAq6w7knFZsng==}
+    engines: {node: '>=0.8.0'}
+
   '@azure/msal-node@3.8.6':
     resolution: {integrity: sha512-XTmhdItcBckcVVTy65Xp+42xG4LX5GK+9AqAsXPXk4IqUNv+LyQo5TMwNjuFYBfAB2GTG9iSQGk+QLc03vhf3w==}
     engines: {node: '>=16'}
+
+  '@azure/msal-node@5.0.3':
+    resolution: {integrity: sha512-DTiu9SEblUVbgiuXWtCXFS2OoIVZPNbPFfK7AVhsWCD4bCHqvHcnDz9uCxk5wnUYJX9Ik0KxjGDFLwH9/lrE+w==}
+    engines: {node: '>=20'}
 
   '@babel/helper-string-parser@7.27.1':
     resolution: {integrity: sha512-qMlSxKbpRlAridDExk92nSobyDdpPijUq2DW6oDnUqd0iOGxmQjyqhMIihI9+zv4LPyZdRje2cavWPbCbWm3eA==}
@@ -3721,11 +3732,13 @@ packages:
 
   glob@10.5.0:
     resolution: {integrity: sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@11.1.0:
     resolution: {integrity: sha512-vuNwKSaKiqm7g0THUBu2x7ckSs3XJLXE+2ssL7/MfTGPLLcrJQ/4Uq1CjPTtO5cCIiRxqvN6Twy1qOwhL0Xjcw==}
     engines: {node: 20 || >=22}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   google-auth-library@10.5.0:
@@ -6280,9 +6293,17 @@ snapshots:
 
   '@azure/msal-common@15.14.1': {}
 
+  '@azure/msal-common@16.0.3': {}
+
   '@azure/msal-node@3.8.6':
     dependencies:
       '@azure/msal-common': 15.14.1
+      jsonwebtoken: 9.0.3
+      uuid: 8.3.2
+
+  '@azure/msal-node@5.0.3':
+    dependencies:
+      '@azure/msal-common': 16.0.3
       jsonwebtoken: 9.0.3
       uuid: 8.3.2
 
@@ -6753,7 +6774,7 @@ snapshots:
     dependencies:
       '@types/node': 24.10.9
     optionalDependencies:
-      axios: 1.13.2(debug@4.4.3)
+      axios: 1.13.2
     transitivePeerDependencies:
       - debug
 
@@ -6956,7 +6977,7 @@ snapshots:
       '@azure/core-auth': 1.10.1
       '@azure/msal-node': 3.8.6
       '@microsoft/agents-activity': 1.2.3
-      axios: 1.13.2(debug@4.4.3)
+      axios: 1.13.2
       jsonwebtoken: 9.0.3
       jwks-rsa: 3.2.2
       object-path: 0.11.8
@@ -7739,7 +7760,7 @@ snapshots:
       '@slack/types': 2.19.0
       '@slack/web-api': 7.13.0
       '@types/express': 5.0.6
-      axios: 1.13.2(debug@4.4.3)
+      axios: 1.13.2
       express: 5.2.1
       path-to-regexp: 8.3.0
       raw-body: 3.0.2
@@ -7785,7 +7806,7 @@ snapshots:
       '@slack/types': 2.19.0
       '@types/node': 25.2.0
       '@types/retry': 0.12.0
-      axios: 1.13.2(debug@4.4.3)
+      axios: 1.13.2
       eventemitter3: 5.0.4
       form-data: 2.5.4
       is-electron: 2.2.2
@@ -8751,6 +8772,14 @@ snapshots:
 
   aws4@1.13.2: {}
 
+  axios@1.13.2:
+    dependencies:
+      follow-redirects: 1.15.11
+      form-data: 2.5.4
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
   axios@1.13.2(debug@4.4.3):
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.3)
@@ -9315,6 +9344,8 @@ snapshots:
       array-back: 3.1.0
 
   flatbuffers@24.12.23: {}
+
+  follow-redirects@1.15.11: {}
 
   follow-redirects@1.15.11(debug@4.4.3):
     optionalDependencies:

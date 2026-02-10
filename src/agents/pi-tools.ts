@@ -159,6 +159,8 @@ export function createOpenClawCodingTools(options?: {
   modelHasVision?: boolean;
   /** Function to get the current user's OIDC token (for Glean search). */
   getOidcToken?: () => string | null | Promise<string | null>;
+  /** Function to get the Azure AD refresh token (for NFD desk, meeting rooms via silent acquisition). */
+  getAzureRefreshToken?: () => string | null | Promise<string | null>;
 }): AnyAgentTool[] {
   const execToolName = "exec";
   const sandbox = options?.sandbox?.enabled ? options.sandbox : undefined;
@@ -352,6 +354,7 @@ export function createOpenClawCodingTools(options?: {
       modelHasVision: options?.modelHasVision,
       requesterAgentIdOverride: agentId,
       getOidcToken: options?.getOidcToken,
+      getAzureRefreshToken: options?.getAzureRefreshToken,
     }),
   ];
   const coreToolNames = new Set(
