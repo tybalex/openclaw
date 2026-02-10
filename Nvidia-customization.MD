@@ -11,10 +11,11 @@ This document describes all NVIDIA-specific customizations made to the OpenClaw 
 3. [Azure AD On-Behalf-Of (OBO) Token Exchange](#3-azure-ad-on-behalf-of-obo-token-exchange)
 4. [NFD Flex Desk Booking](#4-nfd-flex-desk-booking)
 5. [Meeting Room Search & Booking](#5-meeting-room-search--booking)
-6. [UI Changes](#6-ui-changes)
-7. [Token Flow Architecture](#7-token-flow-architecture)
-8. [Environment Variables](#8-environment-variables)
-9. [File Inventory](#9-file-inventory)
+6. [Outlook Email (Read-Only)](#6-outlook-email-read-only)
+7. [UI Changes](#7-ui-changes)
+8. [Token Flow Architecture](#8-token-flow-architecture)
+9. [Environment Variables](#9-environment-variables)
+10. [File Inventory](#10-file-inventory)
 
 ---
 
@@ -160,7 +161,44 @@ User's Azure AD Refresh Token
 
 ---
 
-## 6. UI Changes
+## 6. Outlook Email (Read-Only)
+
+**New file**: `src/agents/tools/outlook-email.ts`
+
+The `outlook_email` agent tool provides read-only email access via the Microsoft Graph API. It allows the agent to list, read, and search the user's Outlook inbox.
+
+### Actions
+
+| Action | Description | Parameters |
+|---|---|---|
+| `list_emails` | Get recent emails from a folder | `count` (default 10), `folder` (default Inbox) |
+| `read_email` | Read full content of a specific email | `message_id` (required) |
+| `search_emails` | Search emails by keyword | `query` (required), `count`, `folder` |
+
+### Token flow
+
+```
+User's Azure AD Refresh Token
+  → acquireDownstreamToken(refreshToken, "https://graph.microsoft.com/Mail.Read")
+    → Silent: get token for api://6afc7495-.../User.Access
+    → OBO: exchange for Graph Mail.Read token
+  → Call Microsoft Graph API (/me/messages) with Bearer token
+```
+
+### Features
+
+- **HTML stripping**: Email bodies are stripped of HTML tags for clean agent consumption.
+- **Body truncation**: Bodies capped at 8000 chars to avoid overwhelming agent context.
+- **Folder support**: Can access Inbox (default), SentItems, Drafts, Archive.
+- **Search**: Uses Graph `$search` for full-text search across subject, body, and sender.
+
+### No additional env vars needed
+
+Uses the same `AZURE_AD_*` credentials as NFD and meeting room tools. The Graph `Mail.Read` scope is requested during the OBO exchange; no separate scope env var is required since the `AZURE_AD_SCOPES` in `.env` already includes the app scope needed for the refresh token bridge.
+
+---
+
+## 7. UI Changes
 
 ### Overview page (`ui/src/ui/views/overview.ts`)
 
@@ -181,7 +219,7 @@ User's Azure AD Refresh Token
 
 ---
 
-## 7. Token Flow Architecture
+## 8. Token Flow Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -221,17 +259,17 @@ User's Azure AD Refresh Token
 │    SSA token (client creds) + GleanToken (Nv-Actor-Token)        │
 │    → ECS API                                                     │
 │                                                                  │
-│  nfd_desk / meeting_room:                                        │
+│  nfd_desk / meeting_room / outlook_email:                         │
 │    Refresh Token                                                 │
 │      → acquireTokenSilent(scope=api://6afc7495-.../User.Access)  │
-│      → exchangeTokenOBO(scope=NFD_SCOPE or GRAPH_SCOPES)        │
+│      → exchangeTokenOBO(scope=NFD_SCOPE/GRAPH_SCOPES/Mail.Read) │
 │      → Call downstream API                                       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 8. Environment Variables
+## 9. Environment Variables
 
 All variables are set in `.env` (gitignored).
 
@@ -270,7 +308,7 @@ All variables are set in `.env` (gitignored).
 
 ---
 
-## 9. File Inventory
+## 10. File Inventory
 
 ### New files (created in this integration)
 
@@ -279,12 +317,13 @@ All variables are set in `.env` (gitignored).
 | `src/agents/tools/azure-obo.ts` | Azure AD OBO token exchange + silent acquisition utility |
 | `src/agents/tools/nfd-desk.ts` | NFD flex desk agent tool (`nfd_desk`) |
 | `src/agents/tools/meeting-room.ts` | Meeting room agent tool (`meeting_room`) |
+| `src/agents/tools/outlook-email.ts` | Outlook email agent tool (`outlook_email`, read-only) |
 
 ### Modified files
 
 | File | Change |
 |---|---|
-| `src/agents/openclaw-tools.ts` | Wire NFD desk + meeting room tools, accept `getAzureRefreshToken` |
+| `src/agents/openclaw-tools.ts` | Wire NFD desk + meeting room + outlook email tools, accept `getAzureRefreshToken` |
 | `src/agents/pi-tools.ts` | Accept `getAzureRefreshToken` option, pass to tool factory |
 | `src/agents/pi-embedded-runner/run.ts` | Thread `azureRefreshToken` to attempt params |
 | `src/agents/pi-embedded-runner/run/attempt.ts` | Pass `getAzureRefreshToken` callback to tool creation |

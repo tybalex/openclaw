@@ -14,6 +14,7 @@ import { createMeetingRoomTool } from "./tools/meeting-room.js";
 import { createMessageTool } from "./tools/message-tool.js";
 import { createNfdDeskTool } from "./tools/nfd-desk.js";
 import { createNodesTool } from "./tools/nodes-tool.js";
+import { createOutlookEmailTool } from "./tools/outlook-email.js";
 import { createSessionStatusTool } from "./tools/session-status-tool.js";
 import { createSessionsHistoryTool } from "./tools/sessions-history-tool.js";
 import { createSessionsListTool } from "./tools/sessions-list-tool.js";
@@ -177,6 +178,16 @@ export function createOpenClawTools(options?: {
     : null;
   if (meetingRoomTool) {
     tools.push(meetingRoomTool);
+  }
+
+  // Add Outlook email tool if refresh token getter is provided and Azure AD is configured
+  const outlookEmailTool = options?.getAzureRefreshToken
+    ? createOutlookEmailTool({
+        getRefreshToken: options.getAzureRefreshToken,
+      })
+    : null;
+  if (outlookEmailTool) {
+    tools.push(outlookEmailTool);
   }
 
   const pluginTools = resolvePluginTools({
