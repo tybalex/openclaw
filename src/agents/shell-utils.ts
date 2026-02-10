@@ -34,8 +34,9 @@ export function getShellConfig(): { shell: string; args: string[] } {
 
   const envShell = process.env.SHELL?.trim();
   const shellName = envShell ? path.basename(envShell) : "";
-  // Fish rejects common bashisms used by tools, so prefer bash when detected.
-  if (shellName === "fish") {
+  // Fish and csh/tcsh reject common bashisms used by tools (redirects, etc.),
+  // so prefer bash when detected.
+  if (shellName === "fish" || shellName === "csh" || shellName === "tcsh") {
     const bash = resolveShellFromPath("bash");
     if (bash) {
       return { shell: bash, args: ["-c"] };
