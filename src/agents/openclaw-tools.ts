@@ -7,6 +7,7 @@ import { createAgentsListTool } from "./tools/agents-list-tool.js";
 import { createBrowserTool } from "./tools/browser-tool.js";
 import { createCanvasTool } from "./tools/canvas-tool.js";
 import { createCronTool } from "./tools/cron-tool.js";
+import { createEmployeeInfoTool } from "./tools/employee-info.js";
 import { createGatewayTool } from "./tools/gateway-tool.js";
 import { createGleanSearchTool } from "./tools/glean-search.js";
 import { createImageTool } from "./tools/image-tool.js";
@@ -15,6 +16,7 @@ import { createMessageTool } from "./tools/message-tool.js";
 import { createNfdDeskTool } from "./tools/nfd-desk.js";
 import { createNodesTool } from "./tools/nodes-tool.js";
 import { createOutlookEmailTool } from "./tools/outlook-email.js";
+import { createPeopleSearchTool } from "./tools/people-search.js";
 import { createSessionStatusTool } from "./tools/session-status-tool.js";
 import { createSessionsHistoryTool } from "./tools/sessions-history-tool.js";
 import { createSessionsListTool } from "./tools/sessions-list-tool.js";
@@ -188,6 +190,22 @@ export function createOpenClawTools(options?: {
     : null;
   if (outlookEmailTool) {
     tools.push(outlookEmailTool);
+  }
+
+  // Add People Search tool if refresh token getter is provided and Azure AD is configured
+  const peopleSearchTool = options?.getAzureRefreshToken
+    ? createPeopleSearchTool({
+        getRefreshToken: options.getAzureRefreshToken,
+      })
+    : null;
+  if (peopleSearchTool) {
+    tools.push(peopleSearchTool);
+  }
+
+  // Add Employee Info tool (Helios API — enabled when HELIOS_API_KEY is set)
+  const employeeInfoTool = createEmployeeInfoTool();
+  if (employeeInfoTool) {
+    tools.push(employeeInfoTool);
   }
 
   const pluginTools = resolvePluginTools({

@@ -12,10 +12,12 @@ This document describes all NVIDIA-specific customizations made to the OpenClaw 
 4. [NFD Flex Desk Booking](#4-nfd-flex-desk-booking)
 5. [Meeting Room Search & Booking](#5-meeting-room-search--booking)
 6. [Outlook Email (Read-Only)](#6-outlook-email-read-only)
-7. [UI Changes](#7-ui-changes)
-8. [Token Flow Architecture](#8-token-flow-architecture)
-9. [Environment Variables](#9-environment-variables)
-10. [File Inventory](#10-file-inventory)
+7. [People Search](#7-people-search)
+8. [Employee Info (Helios)](#8-employee-info-helios)
+9. [UI Changes](#9-ui-changes)
+10. [Token Flow Architecture](#10-token-flow-architecture)
+11. [Environment Variables](#11-environment-variables)
+12. [File Inventory](#12-file-inventory)
 
 ---
 
@@ -198,7 +200,109 @@ Uses the same `AZURE_AD_*` credentials as NFD and meeting room tools. The Graph 
 
 ---
 
-## 7. UI Changes
+## 7. People Search
+
+**New file**: `src/agents/tools/people-search.ts`
+
+The `people_search` agent tool searches for people in the NVIDIA organization via the Microsoft Graph API. It tries three strategies in order (using the first that succeeds):
+
+1. **`/users?$search=`** — Requires `User.Read.All` or `User.ReadBasic.All`. Works in NVIDIA's tenant.
+2. **`/users?$filter=startsWith()`** — Fallback using `$filter` instead of `$search`.
+3. **`/me/people`** — Requires `People.Read` (may need separate admin consent).
+
+### Actions
+
+| Action | Description | Parameters |
+|---|---|---|
+| `search_people` | Search by name or email | `query`, `count` (default 10) |
+| `get_profile` | Get your own profile | — |
+
+### Token flow
+
+```
+User's Azure AD Refresh Token
+  → acquireDownstreamToken(refreshToken, "https://graph.microsoft.com/User.Read.All")
+    → Silent: get token for api://6afc7495-.../User.Access
+    → OBO: exchange for Graph User.Read.All token
+  → Try /users?$search= → /users?$filter= → /me/people
+```
+
+### Response normalization
+
+Both `/users` and `/me/people` return different shapes. The tool normalizes all results to a common format:
+
+```json
+{
+  "name": "John Doe",
+  "email": "johnd@nvidia.com",
+  "jobTitle": "Senior Engineer",
+  "department": "Engineering",
+  "officeLocation": "Santa Clara",
+  "phone": "+1-555-1234"
+}
+```
+
+### No additional env vars needed
+
+Uses the same `AZURE_AD_*` credentials. The `User.Read.All` scope is admin-consented on the Azure AD app, so it works via OBO without being in the login scope string.
+
+---
+
+## 8. Employee Info (Helios)
+
+**New file**: `src/agents/tools/employee-info.ts`
+
+The `employee_info` agent tool fetches detailed employee information from NVIDIA's internal Helios directory service. It complements `people_search` (MS Graph) by providing org structure data that Graph doesn't expose.
+
+### Actions
+
+| Action | Description | Parameters |
+|---|---|---|
+| `get_employee` | Get employee info + full manager chain + direct reports | `login` (required) |
+| `get_direct_reports` | List all direct reports for a manager | `login` (required) |
+
+### Auth
+
+Uses a simple API key (`HELIOS_API_KEY` env var), sent as `auth-token` header. **Not** Azure AD OBO — this is a separate NVIDIA-internal API.
+
+### API endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /v1/users?attributes=managerChain&filter[login]=<login>` | User info + manager chain |
+| `GET /v1/users?filter[managerLogin]=<login>` | Direct reports of a manager |
+
+### Response format (get_employee)
+
+```json
+{
+  "login": "johnd",
+  "name": "John Doe",
+  "email": "johnd@nvidia.com",
+  "title": "Senior Engineer",
+  "department": "Engineering",
+  "managerChain": [
+    { "login": "janes", "name": "Jane Smith" },
+    { "login": "bobw", "name": "Bob Wilson" }
+  ],
+  "directReports": [
+    { "login": "aliceb", "name": "Alice Brown" }
+  ],
+  "directReportCount": 1
+}
+```
+
+### Workflow with people_search
+
+The two tools work together:
+1. Use `people_search` to find someone by name/email (MS Graph)
+2. Use `employee_info` with their login for org details (Helios)
+
+The `login` parameter accepts either a username (`johnd`) or full email (`johnd@nvidia.com`) — the tool extracts the username part automatically.
+
+---
+
+## 9. UI Changes
 
 ### Overview page (`ui/src/ui/views/overview.ts`)
 
@@ -219,7 +323,7 @@ Uses the same `AZURE_AD_*` credentials as NFD and meeting room tools. The Graph 
 
 ---
 
-## 8. Token Flow Architecture
+## 10. Token Flow Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -259,17 +363,17 @@ Uses the same `AZURE_AD_*` credentials as NFD and meeting room tools. The Graph 
 │    SSA token (client creds) + GleanToken (Nv-Actor-Token)        │
 │    → ECS API                                                     │
 │                                                                  │
-│  nfd_desk / meeting_room / outlook_email:                         │
+│  nfd_desk / meeting_room / outlook_email / people_search:         │
 │    Refresh Token                                                 │
 │      → acquireTokenSilent(scope=api://6afc7495-.../User.Access)  │
-│      → exchangeTokenOBO(scope=NFD_SCOPE/GRAPH_SCOPES/Mail.Read) │
+│      → exchangeTokenOBO(scope=NFD/Graph/Mail.Read/User.Read.All)│
 │      → Call downstream API                                       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 9. Environment Variables
+## 11. Environment Variables
 
 All variables are set in `.env` (gitignored).
 
@@ -306,9 +410,16 @@ All variables are set in `.env` (gitignored).
 | `GRAPH_SCOPES` | Microsoft Graph scopes for OBO | `https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/Group.Read.All` |
 | `MEET_API_URL` | meet.nvidia.com room inventory API | `https://meet.nvidia.com/api/v1` |
 
+### Helios (Employee Directory)
+
+| Variable | Description | Default |
+|---|---|---|
+| `HELIOS_API_KEY` | Helios API auth token (required to enable employee_info tool) | — |
+| `HELIOS_BASE_URL` | Helios API base URL | `https://helios-api.nvidia.com/api` |
+
 ---
 
-## 10. File Inventory
+## 12. File Inventory
 
 ### New files (created in this integration)
 
@@ -318,12 +429,14 @@ All variables are set in `.env` (gitignored).
 | `src/agents/tools/nfd-desk.ts` | NFD flex desk agent tool (`nfd_desk`) |
 | `src/agents/tools/meeting-room.ts` | Meeting room agent tool (`meeting_room`) |
 | `src/agents/tools/outlook-email.ts` | Outlook email agent tool (`outlook_email`, read-only) |
+| `src/agents/tools/people-search.ts` | People search agent tool (`people_search`) |
+| `src/agents/tools/employee-info.ts` | Employee info agent tool (`employee_info`, Helios API) |
 
 ### Modified files
 
 | File | Change |
 |---|---|
-| `src/agents/openclaw-tools.ts` | Wire NFD desk + meeting room + outlook email tools, accept `getAzureRefreshToken` |
+| `src/agents/openclaw-tools.ts` | Wire NFD desk + meeting room + outlook email + people search + employee info tools |
 | `src/agents/pi-tools.ts` | Accept `getAzureRefreshToken` option, pass to tool factory |
 | `src/agents/pi-embedded-runner/run.ts` | Thread `azureRefreshToken` to attempt params |
 | `src/agents/pi-embedded-runner/run/attempt.ts` | Pass `getAzureRefreshToken` callback to tool creation |
