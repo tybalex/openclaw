@@ -1,19 +1,5 @@
 {
   "id": "nvidia-enterprise",
-  "providers": ["nvidia"],
-  "providerAuthEnvVars": {
-    "nvidia": ["NVIDIA_API_KEY"]
-  },
-  "providerAuthChoices": [
-    {
-      "provider": "nvidia",
-      "method": "api-key",
-      "choiceId": "nvidia-api-key",
-      "choiceLabel": "NVIDIA API Key",
-      "groupId": "nvidia",
-      "groupLabel": "NVIDIA"
-    }
-  ],
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
