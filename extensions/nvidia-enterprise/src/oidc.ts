@@ -1,14 +1,15 @@
 /**
- * OIDC login flow via plugin HTTP routes.
+ * Azure AD OAuth login flow via plugin HTTP routes.
  *
- * Implements PKCE Authorization Code flow against NVIDIA SSO.
- * Tokens are stored in-memory and accessible to enterprise tools.
+ * Single login that provides tokens for all enterprise tools
+ * (Outlook, People, NFD, Meeting rooms) via OBO exchange.
+ * Glean search uses SSA (service creds) independently.
  *
  * Routes (registered via registerHttpRoute):
- *   GET /nvidia-oidc/login    → redirect to NVIDIA SSO
- *   GET /nvidia-oidc/callback → exchange code for tokens
- *   GET /nvidia-oidc/status   → JSON login status
- *   GET /nvidia-oidc/logout   → clear tokens
+ *   GET /azure-ad/login                → redirect to Azure AD
+ *   GET /api/auth/callback/nvlogin     → exchange code for tokens (registered in Azure AD)
+ *   GET /azure-ad/status               → JSON login status
+ *   GET /azure-ad/logout               → clear tokens
  */
 
 import crypto from "node:crypto";
@@ -18,16 +19,27 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 // Configuration
 // =============================================================================
 
-const OIDC_CONFIG = {
-  issuer: process.env.NVIDIA_OIDC_ISSUER ?? "https://stg.login.nvidia.com",
-  clientId: process.env.NVIDIA_OIDC_CLIENT_ID ?? "9bONc0-8SKqkjS4GfDZuCLLCOwYGpyX4bOQetfyYzNM",
-  scopes: "openid email profile",
+const AZURE_AD_CONFIG = {
+  clientId: process.env.AZURE_AD_OAUTH_CLIENT_ID ?? "6afc7495-bf0b-493a-9ffe-b3dbe390ec52",
+  tenantId: process.env.AZURE_AD_OAUTH_TENANT_ID ?? "43083d15-7273-40c1-b7db-39efd9ccc17a",
+  scope:
+    process.env.AZURE_AD_OAUTH_SCOPE ??
+    "api://be67b199-7e7c-4767-a248-b518f85d6c75/Chat.Access openid profile offline_access",
+  callbackPath: "/api/auth/callback/nvlogin",
 };
+
+function authorizationEndpoint(): string {
+  return `https://login.microsoftonline.com/${AZURE_AD_CONFIG.tenantId}/oauth2/v2.0/authorize`;
+}
+
+function tokenEndpoint(): string {
+  return `https://login.microsoftonline.com/${AZURE_AD_CONFIG.tenantId}/oauth2/v2.0/token`;
+}
 
 function resolveCallbackUrl(req: IncomingMessage): string {
   const host = req.headers.host ?? "localhost:3000";
   const proto = req.headers["x-forwarded-proto"] ?? "http";
-  return `${proto}://${host}/callback`;
+  return `${proto}://${host}${AZURE_AD_CONFIG.callbackPath}`;
 }
 
 // =============================================================================
@@ -35,7 +47,7 @@ function resolveCallbackUrl(req: IncomingMessage): string {
 // =============================================================================
 
 function generateCodeVerifier(): string {
-  return crypto.randomBytes(32).toString("base64url");
+  return crypto.randomBytes(32).toString("hex");
 }
 
 function generateCodeChallenge(verifier: string): string {
@@ -47,9 +59,9 @@ function generateCodeChallenge(verifier: string): string {
 // =============================================================================
 
 type TokenSet = {
-  idToken: string;
   accessToken: string;
   refreshToken?: string;
+  idToken?: string;
   expiresAt: number;
   email?: string;
 };
@@ -57,27 +69,25 @@ type TokenSet = {
 let currentTokens: TokenSet | null = null;
 let pendingPkce: { verifier: string; state: string } | null = null;
 
-export function getOidcIdToken(): string | null {
-  if (!currentTokens) return null;
-  if (Date.now() > currentTokens.expiresAt) return null;
-  return currentTokens.idToken;
-}
-
-export function getOidcAccessToken(): string | null {
+export function getAccessToken(): string | null {
   if (!currentTokens) return null;
   if (Date.now() > currentTokens.expiresAt) return null;
   return currentTokens.accessToken;
 }
 
-export function getOidcRefreshToken(): string | null {
-  return currentTokens?.refreshToken ?? null;
+export function getRefreshToken(): string | null {
+  return currentTokens?.refreshToken ?? process.env.AZURE_AD_REFRESH_TOKEN ?? null;
 }
 
-export function getOidcEmail(): string | null {
+export function getIdToken(): string | null {
+  return currentTokens?.idToken ?? null;
+}
+
+export function getEmail(): string | null {
   return currentTokens?.email ?? null;
 }
 
-export function isOidcLoggedIn(): boolean {
+export function isLoggedIn(): boolean {
   return currentTokens !== null && Date.now() < currentTokens.expiresAt;
 }
 
@@ -90,14 +100,14 @@ async function refreshTokens(): Promise<boolean> {
   if (!rt) return false;
 
   try {
-    const tokenUrl = `${OIDC_CONFIG.issuer}/token`;
-    const res = await fetch(tokenUrl, {
+    const res = await fetch(tokenEndpoint(), {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "refresh_token",
-        client_id: OIDC_CONFIG.clientId,
+        client_id: AZURE_AD_CONFIG.clientId,
         refresh_token: rt,
+        scope: AZURE_AD_CONFIG.scope,
       }),
     });
     if (!res.ok) return false;
@@ -105,9 +115,9 @@ async function refreshTokens(): Promise<boolean> {
     const data = (await res.json()) as Record<string, unknown>;
     const expiresIn = typeof data.expires_in === "number" ? data.expires_in : 3600;
     currentTokens = {
-      idToken: String(data.id_token ?? currentTokens?.idToken ?? ""),
       accessToken: String(data.access_token ?? ""),
       refreshToken: typeof data.refresh_token === "string" ? data.refresh_token : rt,
+      idToken: typeof data.id_token === "string" ? data.id_token : currentTokens?.idToken,
       expiresAt: Date.now() + expiresIn * 1000,
       email: currentTokens?.email,
     };
@@ -118,26 +128,23 @@ async function refreshTokens(): Promise<boolean> {
 }
 
 // =============================================================================
-// Combo Getters (with env var fallback + auto-refresh)
+// Combo Getters (with auto-refresh + env var fallback)
 // =============================================================================
 
-/** Get SSO token for Glean — prefers OIDC, falls back to env var. */
+/** Get SSO token for Glean — falls back to env var. */
 export function getSSOToken(): string | null {
-  // Try OIDC first
-  const oidcToken = getOidcIdToken();
-  if (oidcToken) return oidcToken;
-  // Auto-refresh if we have a refresh token
-  const rt = getOidcRefreshToken();
-  if (rt) {
-    void refreshTokens(); // fire-and-forget, next call will get the new token
-  }
-  // Fall back to env var
-  return process.env.NVIDIA_SSO_TOKEN ?? null;
+  return process.env.NVIDIA_SSO_TOKEN ?? getIdToken() ?? null;
 }
 
-/** Get Azure AD refresh token — prefers OIDC, falls back to env var. */
-export function getRefreshToken(): string | null {
-  return process.env.AZURE_AD_REFRESH_TOKEN ?? getOidcRefreshToken() ?? null;
+/** Get Azure AD refresh token for OBO tools. */
+export function getAzureRefreshToken(): string | null {
+  const rt = getRefreshToken();
+  if (rt) return rt;
+  // Try auto-refresh if we have an expired session with a refresh token
+  if (currentTokens?.refreshToken) {
+    void refreshTokens();
+  }
+  return currentTokens?.refreshToken ?? null;
 }
 
 // =============================================================================
@@ -167,16 +174,17 @@ export function handleLogin(req: IncomingMessage, res: ServerResponse): void {
 
   const callbackUrl = resolveCallbackUrl(req);
   const params = new URLSearchParams({
+    client_id: AZURE_AD_CONFIG.clientId,
     response_type: "code",
-    client_id: OIDC_CONFIG.clientId,
     redirect_uri: callbackUrl,
-    scope: OIDC_CONFIG.scopes,
+    scope: AZURE_AD_CONFIG.scope,
     state,
     code_challenge: challenge,
     code_challenge_method: "S256",
+    prompt: "select_account",
   });
 
-  sendRedirect(res, `${OIDC_CONFIG.issuer}/authorize?${params}`);
+  sendRedirect(res, `${authorizationEndpoint()}?${params}`);
 }
 
 export async function handleCallback(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -188,7 +196,7 @@ export async function handleCallback(req: IncomingMessage, res: ServerResponse):
   if (error) {
     sendHtml(
       res,
-      `<h2>Login failed</h2><p>${error}: ${url.searchParams.get("error_description") ?? ""}</p><p><a href="/nvidia-oidc/login">Try again</a></p>`,
+      `<h2>Login failed</h2><p>${error}: ${url.searchParams.get("error_description") ?? ""}</p><p><a href="/azure-ad/login">Try again</a></p>`,
     );
     return;
   }
@@ -196,24 +204,24 @@ export async function handleCallback(req: IncomingMessage, res: ServerResponse):
   if (!code || !pendingPkce || state !== pendingPkce.state) {
     sendHtml(
       res,
-      '<h2>Invalid callback</h2><p>State mismatch or missing code.</p><p><a href="/nvidia-oidc/login">Try again</a></p>',
+      '<h2>Invalid callback</h2><p>State mismatch or missing code.</p><p><a href="/azure-ad/login">Try again</a></p>',
     );
     return;
   }
 
   const callbackUrl = resolveCallbackUrl(req);
-  const tokenUrl = `${OIDC_CONFIG.issuer}/token`;
 
   try {
-    const tokenRes = await fetch(tokenUrl, {
+    const tokenRes = await fetch(tokenEndpoint(), {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "authorization_code",
-        client_id: OIDC_CONFIG.clientId,
+        client_id: AZURE_AD_CONFIG.clientId,
         code,
         redirect_uri: callbackUrl,
         code_verifier: pendingPkce.verifier,
+        scope: AZURE_AD_CONFIG.scope,
       }),
     });
 
@@ -223,7 +231,7 @@ export async function handleCallback(req: IncomingMessage, res: ServerResponse):
       const errBody = await tokenRes.text();
       sendHtml(
         res,
-        `<h2>Token exchange failed</h2><pre>${errBody}</pre><p><a href="/nvidia-oidc/login">Try again</a></p>`,
+        `<h2>Token exchange failed</h2><pre>${errBody}</pre><p><a href="/azure-ad/login">Try again</a></p>`,
       );
       return;
     }
@@ -231,20 +239,20 @@ export async function handleCallback(req: IncomingMessage, res: ServerResponse):
     const data = (await tokenRes.json()) as Record<string, unknown>;
     const expiresIn = typeof data.expires_in === "number" ? data.expires_in : 3600;
 
-    // Decode email from id_token (JWT payload)
+    // Decode email from id_token
     let email: string | undefined;
     try {
       const idToken = String(data.id_token ?? "");
       const payload = JSON.parse(Buffer.from(idToken.split(".")[1] ?? "", "base64url").toString());
-      email = payload.email ?? payload.sub;
+      email = payload.preferred_username ?? payload.email ?? payload.sub;
     } catch {
       // ignore
     }
 
     currentTokens = {
-      idToken: String(data.id_token ?? ""),
       accessToken: String(data.access_token ?? ""),
       refreshToken: typeof data.refresh_token === "string" ? data.refresh_token : undefined,
+      idToken: typeof data.id_token === "string" ? data.id_token : undefined,
       expiresAt: Date.now() + expiresIn * 1000,
       email,
     };
@@ -253,15 +261,15 @@ export async function handleCallback(req: IncomingMessage, res: ServerResponse):
   } catch (err) {
     sendHtml(
       res,
-      `<h2>Token exchange error</h2><pre>${String(err)}</pre><p><a href="/nvidia-oidc/login">Try again</a></p>`,
+      `<h2>Token exchange error</h2><pre>${String(err)}</pre><p><a href="/azure-ad/login">Try again</a></p>`,
     );
   }
 }
 
 export function handleStatus(_req: IncomingMessage, res: ServerResponse): void {
   sendJson(res, 200, {
-    loggedIn: isOidcLoggedIn(),
-    email: getOidcEmail(),
+    loggedIn: isLoggedIn(),
+    email: getEmail(),
     expiresAt: currentTokens?.expiresAt ?? null,
     hasRefreshToken: Boolean(currentTokens?.refreshToken),
   });
@@ -274,15 +282,15 @@ export function handleLogout(_req: IncomingMessage, res: ServerResponse): void {
 }
 
 /**
- * Auth gate: redirect unauthenticated browser requests to OIDC login.
- * Returns false (pass-through) for OIDC routes, API calls, WebSocket upgrades,
+ * Auth gate: redirect unauthenticated browser requests to Azure AD login.
+ * Returns false (pass-through) for auth routes, API calls, WebSocket upgrades,
  * and non-browser requests. Returns true (handled) when redirecting.
  */
 export function handleAuthGate(req: IncomingMessage, res: ServerResponse): boolean {
   const url = req.url ?? "/";
 
-  // Don't gate OIDC routes themselves
-  if (url.startsWith("/nvidia-oidc/") || url.startsWith("/callback")) {
+  // Don't gate auth routes
+  if (url.startsWith("/azure-ad/") || url.startsWith("/api/auth/") || url.startsWith("/callback")) {
     return false;
   }
 
@@ -303,11 +311,11 @@ export function handleAuthGate(req: IncomingMessage, res: ServerResponse): boole
   }
 
   // If already logged in, pass through
-  if (isOidcLoggedIn()) {
+  if (isLoggedIn()) {
     return false;
   }
 
-  // Redirect to OIDC login
-  sendRedirect(res, "/nvidia-oidc/login");
+  // Redirect to Azure AD login
+  sendRedirect(res, "/azure-ad/login");
   return true;
 }

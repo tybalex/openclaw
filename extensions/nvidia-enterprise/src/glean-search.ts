@@ -149,7 +149,7 @@ const DEFAULT_EXPANDED_SNIPPET_SIZE = 1000;
 async function callECSSearch(params: {
   query: string;
   ssaToken: string;
-  ssoToken: string;
+  ssoToken?: string | null;
   pageSize: number;
   datasources?: string[];
   maxSnippetSize?: number;
@@ -184,7 +184,7 @@ async function callECSSearch(params: {
     headers: {
       Authorization: `Bearer ${params.ssaToken}`,
       "Content-Type": "application/json",
-      "Nv-Actor-Token": params.ssoToken,
+      ...(params.ssoToken ? { "Nv-Actor-Token": params.ssoToken } : {}),
     },
     body: JSON.stringify(requestBody),
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
@@ -233,8 +233,8 @@ export function createGleanSearchTool(options: {
     return null;
   }
 
-  // Check if ECS is configured
-  if (!ECS_CONFIG.searchUrl) {
+  // Check if ECS is configured (need at least search URL + service creds)
+  if (!ECS_CONFIG.searchUrl || !ECS_CONFIG.clientId || !ECS_CONFIG.clientSecret) {
     return null;
   }
 
@@ -245,14 +245,8 @@ export function createGleanSearchTool(options: {
       "Search NVIDIA internal enterprise knowledge base (Glean). Use for company-specific questions: policies, benefits, internal procedures, org information, employee resources, internal documentation. Searches Confluence, Slack, Google Drive, Jira, SharePoint, and other internal sources. NOT for public/external information - use web_search for that instead.",
     parameters: GleanSearchSchema,
     execute: async (_toolCallId, args) => {
-      // Get user's SSO token
+      // SSO token is optional — personalizes results but not required
       const ssoToken = await options.getSSOToken();
-      if (!ssoToken) {
-        return jsonResult({
-          error: "not_authenticated",
-          message: "Glean search requires NVIDIA SSO authentication. Please log in first.",
-        });
-      }
 
       const params = args as Record<string, unknown>;
       const query = readStringParam(params, "query", { required: true });

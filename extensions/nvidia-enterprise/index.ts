@@ -1,9 +1,9 @@
 /**
  * NVIDIA Enterprise plugin.
  *
- * Provides enterprise tools and OIDC login for NVIDIA SSO.
- * Run `pnpm nvidia:setup` to configure, then visit
- * http://localhost:3000/nvidia-oidc/login to authenticate.
+ * Provides enterprise tools and Azure AD login for Microsoft Graph tools.
+ * Run `pnpm nvidia:setup` to configure, then visit http://localhost:3000
+ * to authenticate via Azure AD.
  */
 
 import { definePluginEntry, type AnyAgentTool } from "openclaw/plugin-sdk/core";
@@ -13,7 +13,7 @@ import { createMeetingRoomTool } from "./src/meeting-room.js";
 import { createNfdDeskTool } from "./src/nfd-desk.js";
 import {
   getSSOToken,
-  getRefreshToken,
+  getAzureRefreshToken,
   handleLogin,
   handleCallback,
   handleStatus,
@@ -31,12 +31,11 @@ export default definePluginEntry({
   id: "nvidia-enterprise",
   name: "NVIDIA Enterprise Plugin",
   description:
-    "NVIDIA enterprise tools + OIDC SSO login for Glean, People, Outlook, NFD, Meeting rooms, Employee info",
+    "NVIDIA enterprise tools + Azure AD SSO for Outlook, People, NFD, Meeting rooms, Glean, Employee info",
   register(api) {
     // -------------------------------------------------------------------------
-    // 1. OIDC HTTP routes (no gateway auth — handles its own auth)
+    // 1. Auth gate: redirect unauthenticated browser requests to Azure AD
     // -------------------------------------------------------------------------
-    // Auth gate: redirect unauthenticated browser requests to OIDC login
     api.registerHttpRoute({
       path: "/",
       auth: "plugin",
@@ -44,29 +43,32 @@ export default definePluginEntry({
       handler: (req, res) => handleAuthGate(req, res),
     });
 
+    // -------------------------------------------------------------------------
+    // 2. Azure AD OAuth routes
+    // -------------------------------------------------------------------------
     api.registerHttpRoute({
-      path: "/nvidia-oidc/login",
+      path: "/azure-ad/login",
       auth: "plugin",
       handler: (req, res) => {
         handleLogin(req, res);
       },
     });
     api.registerHttpRoute({
-      path: "/callback",
+      path: "/api/auth/callback/nvlogin",
       auth: "plugin",
       handler: async (req, res) => {
         await handleCallback(req, res);
       },
     });
     api.registerHttpRoute({
-      path: "/nvidia-oidc/status",
+      path: "/azure-ad/status",
       auth: "plugin",
       handler: (req, res) => {
         handleStatus(req, res);
       },
     });
     api.registerHttpRoute({
-      path: "/nvidia-oidc/logout",
+      path: "/azure-ad/logout",
       auth: "plugin",
       handler: (req, res) => {
         handleLogout(req, res);
@@ -74,14 +76,14 @@ export default definePluginEntry({
     });
 
     // -------------------------------------------------------------------------
-    // 2. Enterprise tools (token getters use OIDC store with env var fallback)
+    // 3. Enterprise tools
     // -------------------------------------------------------------------------
     const tools: Array<AnyAgentTool | null> = [
       createGleanSearchTool({ getSSOToken }),
-      createPeopleSearchTool({ getRefreshToken }),
-      createOutlookEmailTool({ getRefreshToken }),
-      createNfdDeskTool({ getRefreshToken }),
-      createMeetingRoomTool({ getRefreshToken }),
+      createPeopleSearchTool({ getRefreshToken: getAzureRefreshToken }),
+      createOutlookEmailTool({ getRefreshToken: getAzureRefreshToken }),
+      createNfdDeskTool({ getRefreshToken: getAzureRefreshToken }),
+      createMeetingRoomTool({ getRefreshToken: getAzureRefreshToken }),
       createEmployeeInfoTool(),
     ];
 
