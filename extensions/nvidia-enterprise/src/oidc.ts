@@ -275,3 +275,42 @@ export function handleLogout(_req: IncomingMessage, res: ServerResponse): void {
   pendingPkce = null;
   sendJson(res, 200, { loggedIn: false });
 }
+
+/**
+ * Auth gate: redirect unauthenticated browser requests to OIDC login.
+ * Returns false (pass-through) for OIDC routes, API calls, WebSocket upgrades,
+ * and non-browser requests. Returns true (handled) when redirecting.
+ */
+export function handleAuthGate(req: IncomingMessage, res: ServerResponse): boolean {
+  const url = req.url ?? "/";
+
+  // Don't gate OIDC routes themselves
+  if (url.startsWith("/nvidia-oidc/")) {
+    return false;
+  }
+
+  // Don't gate API/RPC paths
+  if (url.startsWith("/api/") || url.startsWith("/rpc/") || url.startsWith("/v1/")) {
+    return false;
+  }
+
+  // Don't gate WebSocket upgrades
+  if (req.headers.upgrade?.toLowerCase() === "websocket") {
+    return false;
+  }
+
+  // Don't gate non-browser requests (curl, SDK, etc.)
+  const accept = req.headers.accept ?? "";
+  if (!accept.includes("text/html")) {
+    return false;
+  }
+
+  // If already logged in, pass through
+  if (isOidcLoggedIn()) {
+    return false;
+  }
+
+  // Redirect to OIDC login
+  sendRedirect(res, "/nvidia-oidc/login");
+  return true;
+}

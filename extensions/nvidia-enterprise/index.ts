@@ -18,6 +18,7 @@ import {
   handleCallback,
   handleStatus,
   handleLogout,
+  handleAuthGate,
 } from "./src/oidc.js";
 import { createOutlookEmailTool } from "./src/outlook-email.js";
 import { createPeopleSearchTool } from "./src/people-search.js";
@@ -35,6 +36,14 @@ export default definePluginEntry({
     // -------------------------------------------------------------------------
     // 1. OIDC HTTP routes (no gateway auth — handles its own auth)
     // -------------------------------------------------------------------------
+    // Auth gate: redirect unauthenticated browser requests to OIDC login
+    api.registerHttpRoute({
+      path: "/",
+      auth: "plugin",
+      match: "prefix",
+      handler: (req, res) => handleAuthGate(req, res),
+    });
+
     api.registerHttpRoute({
       path: "/nvidia-oidc/login",
       auth: "plugin",
