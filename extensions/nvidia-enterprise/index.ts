@@ -7,6 +7,9 @@
  *   NFD desk booking, Meeting room booking, Employee info (Helios)
  */
 
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { definePluginEntry, type AnyAgentTool } from "openclaw/plugin-sdk/core";
 import { createProviderApiKeyAuthMethod } from "openclaw/plugin-sdk/provider-auth";
 import { buildSingleProviderApiKeyCatalog } from "openclaw/plugin-sdk/provider-catalog";
@@ -126,5 +129,84 @@ export default definePluginEntry({
         api.registerTool(tool);
       }
     }
+
+    // -------------------------------------------------------------------------
+    // 3. Register CLI: `openclaw nvidia setup`
+    // -------------------------------------------------------------------------
+    api.registerCli(
+      ({ program }) => {
+        const nvidia = program.command("nvidia").description("NVIDIA enterprise plugin commands");
+
+        nvidia
+          .command("setup")
+          .description("Configure OpenClaw to use NVIDIA as the default provider")
+          .option("--port <port>", "Gateway port (default: 3000)", "3000")
+          .option("--auth <mode>", "Gateway auth mode (default: none)", "none")
+          .action((opts: { port: string; auth: string }) => {
+            const configDir = path.join(os.homedir(), ".openclaw");
+            const configPath = path.join(configDir, "openclaw.json");
+            fs.mkdirSync(configDir, { recursive: true });
+
+            // Read existing config or start fresh
+            let cfg: Record<string, unknown> = {};
+            try {
+              cfg = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+            } catch {
+              // no existing config
+            }
+
+            // Apply NVIDIA defaults
+            cfg.gateway = {
+              ...(cfg.gateway as Record<string, unknown> | undefined),
+              mode: "local",
+              port: Number(opts.port),
+              auth: { mode: opts.auth },
+            };
+            cfg.agents = {
+              ...(cfg.agents as Record<string, unknown> | undefined),
+              defaults: {
+                ...((cfg.agents as Record<string, unknown> | undefined)?.defaults as
+                  | Record<string, unknown>
+                  | undefined),
+                model: { primary: DEFAULT_MODEL },
+              },
+            };
+            cfg.models = {
+              ...(cfg.models as Record<string, unknown> | undefined),
+              mode: "merge",
+              providers: {
+                ...((cfg.models as Record<string, unknown> | undefined)?.providers as
+                  | Record<string, unknown>
+                  | undefined),
+                nvidia: {
+                  baseUrl: NVIDIA_INFERENCE_BASE_URL,
+                  apiKey: "${NVIDIA_API_KEY}",
+                  api: "openai-completions",
+                  models: [
+                    {
+                      id: "aws/anthropic/claude-opus-4-5",
+                      name: "Claude Opus 4.5 (NVIDIA)",
+                      reasoning: true,
+                      input: ["text", "image"],
+                      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                      contextWindow: 200000,
+                      maxTokens: 32000,
+                    },
+                  ],
+                },
+              },
+            };
+
+            fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2) + "\n");
+            console.log(`Wrote ${configPath}`);
+            console.log(`  Provider: NVIDIA (${NVIDIA_INFERENCE_BASE_URL})`);
+            console.log(`  Model:    ${DEFAULT_MODEL}`);
+            console.log(`  Port:     ${opts.port}`);
+            console.log(`  Auth:     ${opts.auth}`);
+            console.log("\nSet NVIDIA_API_KEY in your environment, then run: openclaw gateway run");
+          });
+      },
+      { commands: ["nvidia"] },
+    );
   },
 });
