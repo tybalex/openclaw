@@ -20,10 +20,11 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 // =============================================================================
 
 const AZURE_AD_CONFIG = {
-  clientId: process.env.AZURE_AD_OAUTH_CLIENT_ID ?? "6afc7495-bf0b-493a-9ffe-b3dbe390ec52",
-  tenantId: process.env.AZURE_AD_OAUTH_TENANT_ID ?? "43083d15-7273-40c1-b7db-39efd9ccc17a",
+  clientId: process.env.AZURE_AD_CLIENT_ID ?? "6afc7495-bf0b-493a-9ffe-b3dbe390ec52",
+  clientSecret: process.env.AZURE_AD_CLIENT_SECRET ?? "",
+  tenantId: process.env.AZURE_AD_TENANT_ID ?? "43083d15-7273-40c1-b7db-39efd9ccc17a",
   scope:
-    process.env.AZURE_AD_OAUTH_SCOPE ??
+    process.env.AZURE_AD_SCOPES ??
     "api://be67b199-7e7c-4767-a248-b518f85d6c75/Chat.Access openid profile offline_access",
   callbackPath: "/api/auth/callback/nvlogin",
 };
@@ -106,6 +107,7 @@ async function refreshTokens(): Promise<boolean> {
       body: new URLSearchParams({
         grant_type: "refresh_token",
         client_id: AZURE_AD_CONFIG.clientId,
+        ...(AZURE_AD_CONFIG.clientSecret ? { client_secret: AZURE_AD_CONFIG.clientSecret } : {}),
         refresh_token: rt,
         scope: AZURE_AD_CONFIG.scope,
       }),
@@ -218,6 +220,7 @@ export async function handleCallback(req: IncomingMessage, res: ServerResponse):
       body: new URLSearchParams({
         grant_type: "authorization_code",
         client_id: AZURE_AD_CONFIG.clientId,
+        ...(AZURE_AD_CONFIG.clientSecret ? { client_secret: AZURE_AD_CONFIG.clientSecret } : {}),
         code,
         redirect_uri: callbackUrl,
         code_verifier: pendingPkce.verifier,
