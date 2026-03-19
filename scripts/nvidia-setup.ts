@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 
 const NVIDIA_INFERENCE_BASE_URL = "https://inference-api.nvidia.com";
-const DEFAULT_MODEL = "nvidia/aws/anthropic/claude-opus-4-5";
+const DEFAULT_MODEL = "nvidia/aws/anthropic/bedrock-claude-sonnet-4-6";
 
 const args = process.argv.slice(2);
 function getArg(name: string, fallback: string): string {
@@ -58,8 +58,8 @@ cfg.models = {
       api: "openai-completions",
       models: [
         {
-          id: "aws/anthropic/claude-opus-4-5",
-          name: "Claude Opus 4.5 (NVIDIA)",
+          id: "aws/anthropic/bedrock-claude-sonnet-4-6",
+          name: "Claude Sonnet 4.6 (NVIDIA)",
           reasoning: true,
           input: ["text", "image"],
           cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
