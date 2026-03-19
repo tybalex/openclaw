@@ -52,7 +52,7 @@ export default definePluginEntry({
       },
     });
     api.registerHttpRoute({
-      path: "/nvidia-oidc/callback",
+      path: "/callback",
       auth: "plugin",
       handler: async (req, res) => {
         await handleCallback(req, res);

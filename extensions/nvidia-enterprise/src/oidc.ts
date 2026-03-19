@@ -27,7 +27,7 @@ const OIDC_CONFIG = {
 function resolveCallbackUrl(req: IncomingMessage): string {
   const host = req.headers.host ?? "localhost:3000";
   const proto = req.headers["x-forwarded-proto"] ?? "http";
-  return `${proto}://${host}/nvidia-oidc/callback`;
+  return `${proto}://${host}/callback`;
 }
 
 // =============================================================================
@@ -285,7 +285,7 @@ export function handleAuthGate(req: IncomingMessage, res: ServerResponse): boole
   const url = req.url ?? "/";
 
   // Don't gate OIDC routes themselves
-  if (url.startsWith("/nvidia-oidc/")) {
+  if (url.startsWith("/nvidia-oidc/") || url.startsWith("/callback")) {
     return false;
   }
 
