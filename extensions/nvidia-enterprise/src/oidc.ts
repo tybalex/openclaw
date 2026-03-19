@@ -249,10 +249,7 @@ export async function handleCallback(req: IncomingMessage, res: ServerResponse):
       email,
     };
 
-    sendHtml(
-      res,
-      `<h2>Login successful</h2><p>Logged in as <strong>${email ?? "unknown"}</strong>.</p><p>You can close this tab. Enterprise tools are now active.</p>`,
-    );
+    sendRedirect(res, "/");
   } catch (err) {
     sendHtml(
       res,
