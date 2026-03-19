@@ -20,6 +20,7 @@ import {
   applyLoggingDefaults,
   applyMessageDefaults,
   applyModelDefaults,
+  applyNvidiaEnvAutoConfig,
   applySessionDefaults,
   applyTalkApiKey,
 } from "./defaults.js";
@@ -45,6 +46,7 @@ const SHELL_ENV_EXPECTED_KEYS = [
   "ZAI_API_KEY",
   "OPENROUTER_API_KEY",
   "AI_GATEWAY_API_KEY",
+  "NVIDIA_API_KEY",
   "MINIMAX_API_KEY",
   "SYNTHETIC_API_KEY",
   "ELEVENLABS_API_KEY",
@@ -222,7 +224,8 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
             timeoutMs: resolveShellEnvFallbackTimeoutMs(deps.env),
           });
         }
-        return {};
+        // Auto-configure NVIDIA provider when NVIDIA_API_KEY is set (skip onboard)
+        return applyNvidiaEnvAutoConfig({}, deps.env);
       }
       const raw = deps.fs.readFileSync(configPath, "utf-8");
       const parsed = deps.json5.parse(raw);
@@ -327,12 +330,14 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
     const exists = deps.fs.existsSync(configPath);
     if (!exists) {
       const hash = hashConfigRaw(null);
+      // Auto-configure NVIDIA provider when NVIDIA_API_KEY is set (skip onboard)
+      const base = applyNvidiaEnvAutoConfig({}, deps.env);
       const config = applyTalkApiKey(
         applyModelDefaults(
           applyCompactionDefaults(
             applyContextPruningDefaults(
               applyAgentDefaults(
-                applyGatewayDefaults(applySessionDefaults(applyMessageDefaults({}))),
+                applyGatewayDefaults(applySessionDefaults(applyMessageDefaults(base))),
               ),
             ),
           ),

@@ -1,9 +1,11 @@
 import type { OpenClawConfig } from "./types.js";
 import type { ModelDefinitionConfig } from "./types.models.js";
-import { DEFAULT_CONTEXT_TOKENS } from "../agents/defaults.js";
+import { DEFAULT_CONTEXT_TOKENS, DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
 import { parseModelRef } from "../agents/model-selection.js";
 import { DEFAULT_AGENT_MAX_CONCURRENT, DEFAULT_SUBAGENT_MAX_CONCURRENT } from "./agent-limits.js";
 import { resolveTalkApiKey } from "./talk.js";
+
+const NVIDIA_BASE_URL = "https://inference-api.nvidia.com";
 
 type WarnState = { warned: boolean };
 
@@ -476,6 +478,63 @@ export function applyCompactionDefaults(cfg: OpenClawConfig): OpenClawConfig {
         compaction: {
           ...compaction,
           mode: "safeguard",
+        },
+      },
+    },
+  };
+}
+
+/**
+ * When NVIDIA_API_KEY is set in the environment but no config file exists,
+ * auto-configure the NVIDIA provider and set gateway.mode = "local" so
+ * the gateway can start without running the onboarding wizard.
+ */
+export function applyNvidiaEnvAutoConfig(
+  cfg: OpenClawConfig,
+  env: NodeJS.ProcessEnv,
+): OpenClawConfig {
+  const apiKey = env.NVIDIA_API_KEY?.trim();
+  if (!apiKey) {
+    return cfg;
+  }
+  // Don't override if a provider is already configured
+  if (cfg.models?.providers && Object.keys(cfg.models.providers).length > 0) {
+    return cfg;
+  }
+  const modelRef = `${DEFAULT_PROVIDER}/${DEFAULT_MODEL}`;
+  return {
+    ...cfg,
+    gateway: {
+      ...cfg.gateway,
+      mode: cfg.gateway?.mode ?? "local",
+    },
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...cfg.agents?.defaults,
+        model: { primary: modelRef },
+      },
+    },
+    models: {
+      ...cfg.models,
+      mode: "merge",
+      providers: {
+        ...cfg.models?.providers,
+        nvidia: {
+          baseUrl: NVIDIA_BASE_URL,
+          apiKey,
+          api: "openai-completions",
+          models: [
+            {
+              id: DEFAULT_MODEL,
+              name: "Claude Opus 4.5 (NVIDIA)",
+              reasoning: false,
+              input: ["text", "image"],
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+              contextWindow: 200000,
+              maxTokens: 64000,
+            },
+          ],
         },
       },
     },
