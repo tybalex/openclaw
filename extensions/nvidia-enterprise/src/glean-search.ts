@@ -97,6 +97,7 @@ async function getSSAToken(): Promise<string> {
 
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
+    console.error("[glean] SSA token fetch failed:", res.status, detail);
     throw new Error(`SSA token error (${res.status}): ${detail || res.statusText}`);
   }
 
@@ -192,6 +193,7 @@ async function callECSSearch(params: {
 
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
+    console.error("[glean] ECS API call failed:", res.status, detail);
     throw new Error(`ECS API error (${res.status}): ${detail || res.statusText}`);
   }
 
@@ -260,8 +262,14 @@ export function createGleanSearchTool(options: {
       });
 
       try {
+        console.log("[glean] starting search:", query);
+        console.log("[glean] ECS URL:", ECS_CONFIG.searchUrl);
+        console.log("[glean] SSA token URL:", ECS_CONFIG.tokenUrl);
+        console.log("[glean] SSO token present:", Boolean(ssoToken));
+
         // Get SSA token (cached)
         const ssaToken = await getSSAToken();
+        console.log("[glean] SSA token acquired, length:", ssaToken.length);
 
         // Call ECS API
         const results = await callECSSearch({
@@ -274,6 +282,7 @@ export function createGleanSearchTool(options: {
           expandedSnippetSize: expandedSnippetSize ?? undefined,
         });
 
+        console.log("[glean] search returned", results.length, "results");
         return jsonResult({
           query,
           count: results.length,
@@ -281,6 +290,7 @@ export function createGleanSearchTool(options: {
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        console.error("[glean] search failed:", message);
         return jsonResult({
           error: "search_failed",
           message,
