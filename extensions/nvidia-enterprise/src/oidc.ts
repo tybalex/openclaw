@@ -69,6 +69,33 @@ type TokenSet = {
 
 let currentTokens: TokenSet | null = null;
 let pendingPkce: { verifier: string; state: string } | null = null;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleTokenRefresh(): void {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  if (!currentTokens?.refreshToken) return;
+
+  // Refresh 5 minutes before expiry
+  const msUntilRefresh = currentTokens.expiresAt - Date.now() - 5 * 60 * 1000;
+  if (msUntilRefresh <= 0) {
+    // Already due — refresh now
+    void refreshTokens().then((ok) => {
+      if (ok) console.log("[azure-ad] token auto-refreshed");
+      else console.warn("[azure-ad] token auto-refresh failed");
+    });
+    return;
+  }
+  refreshTimer = setTimeout(() => {
+    void refreshTokens().then((ok) => {
+      if (ok) {
+        console.log("[azure-ad] token auto-refreshed");
+        scheduleTokenRefresh(); // schedule next refresh
+      } else {
+        console.warn("[azure-ad] token auto-refresh failed");
+      }
+    });
+  }, msUntilRefresh);
+}
 
 export function getAccessToken(): string | null {
   if (!currentTokens) return null;
@@ -89,7 +116,11 @@ export function getEmail(): string | null {
 }
 
 export function isLoggedIn(): boolean {
-  return currentTokens !== null && Date.now() < currentTokens.expiresAt;
+  // Has tokens and either not expired OR has refresh token (can auto-refresh)
+  if (!currentTokens) return false;
+  if (Date.now() < currentTokens.expiresAt) return true;
+  // Access token expired but refresh token available — still "logged in"
+  return Boolean(currentTokens.refreshToken);
 }
 
 // =============================================================================
@@ -138,15 +169,13 @@ export function getSSOToken(): string | null {
   return process.env.NVIDIA_SSO_TOKEN ?? getIdToken() ?? null;
 }
 
-/** Get Azure AD refresh token for OBO tools. */
-export function getAzureRefreshToken(): string | null {
-  const rt = getRefreshToken();
-  if (rt) return rt;
-  // Try auto-refresh if we have an expired session with a refresh token
-  if (currentTokens?.refreshToken) {
-    void refreshTokens();
+/** Get Azure AD refresh token for OBO tools — auto-refreshes if needed. */
+export async function getAzureRefreshToken(): Promise<string | null> {
+  // If access token expired but we have a refresh token, refresh now
+  if (currentTokens?.refreshToken && Date.now() >= currentTokens.expiresAt) {
+    await refreshTokens();
   }
-  return currentTokens?.refreshToken ?? null;
+  return getRefreshToken();
 }
 
 // =============================================================================
@@ -259,6 +288,9 @@ export async function handleCallback(req: IncomingMessage, res: ServerResponse):
       expiresAt: Date.now() + expiresIn * 1000,
       email,
     };
+
+    // Schedule proactive token refresh before expiry
+    scheduleTokenRefresh();
 
     sendRedirect(res, "/");
   } catch (err) {
