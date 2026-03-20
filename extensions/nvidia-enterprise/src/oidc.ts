@@ -70,6 +70,9 @@ type TokenSet = {
 let currentTokens: TokenSet | null = null;
 let pendingPkce: { verifier: string; state: string } | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+let sessionSecret: string | null = null;
+
+const SESSION_COOKIE_NAME = "nvidia_session";
 
 function scheduleTokenRefresh(): void {
   if (refreshTimer) clearTimeout(refreshTimer);
@@ -182,6 +185,22 @@ export async function getAzureRefreshToken(): Promise<string | null> {
 // HTTP Route Handlers
 // =============================================================================
 
+function generateSessionSecret(): string {
+  sessionSecret = crypto.randomBytes(32).toString("hex");
+  return sessionSecret;
+}
+
+function setSessionCookie(res: ServerResponse): void {
+  const secret = sessionSecret ?? generateSessionSecret();
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE_NAME}=${secret}; Path=/; HttpOnly; SameSite=Lax`);
+}
+
+function hasValidSessionCookie(req: IncomingMessage): boolean {
+  if (!sessionSecret) return false;
+  const cookies = req.headers.cookie ?? "";
+  return cookies.split(";").some((c) => c.trim() === `${SESSION_COOKIE_NAME}=${sessionSecret}`);
+}
+
 function sendJson(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(data));
@@ -292,6 +311,8 @@ export async function handleCallback(req: IncomingMessage, res: ServerResponse):
     // Schedule proactive token refresh before expiry
     scheduleTokenRefresh();
 
+    // Set session cookie so this browser is recognized
+    setSessionCookie(res);
     sendRedirect(res, "/");
   } catch (err) {
     sendHtml(
@@ -313,6 +334,10 @@ export function handleStatus(_req: IncomingMessage, res: ServerResponse): void {
 export function handleLogout(_req: IncomingMessage, res: ServerResponse): void {
   currentTokens = null;
   pendingPkce = null;
+  sessionSecret = null;
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = null;
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Max-Age=0`);
   sendJson(res, 200, { loggedIn: false });
 }
 
@@ -345,8 +370,8 @@ export function handleAuthGate(req: IncomingMessage, res: ServerResponse): boole
     return false;
   }
 
-  // If already logged in, pass through
-  if (isLoggedIn()) {
+  // If this browser has a valid session cookie, pass through
+  if (hasValidSessionCookie(req)) {
     return false;
   }
 
